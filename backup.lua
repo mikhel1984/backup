@@ -148,6 +148,8 @@ argparse.diff = argparse.rev
 argparse.base = function()
   return bkpname(arg[1],arg[4]), tonumber(arg[3])
 end
+-- pop branch | pop
+argparse.pop = argparse.log
 -- return backup name and parameter
 argparse.get = function ()
   return argparse[arg[2]]()
@@ -164,7 +166,7 @@ backup.log = function ()
       end
     end
   end)
-  if not v then print("Empty") end 
+  if not v then print("No file history") end 
 end
 -- prepare file version based on bkp file
 backup._make = function (fname, last) 
@@ -282,6 +284,23 @@ backup.base = function ()
   while ind <= #tbl and not string.find(tbl[ind],"^BKP NEW ") do ind = ind+1 end 
   for j = ind,#tbl do f:write(tbl[j],'\n') end 
   f:close()
+end
+-- remove last revision
+backup.pop = function ()
+  local fname = argparse.get()
+  local tbl = diff.read(fname)
+  local line
+  repeat 
+    line = table.remove(tbl)
+  until string.find(line, "^BKP NEW ")
+  if #tbl == 0 then
+    os.remove(fname)
+  else
+    local f = io.open(fname, 'w')
+    for i = 1, #tbl do f:write(tbl[i], '\n') end
+    f:close()
+  end
+  print("Remove", string.sub(line, 9))
 end
 
 setmetatable(backup, {__index=function() 
