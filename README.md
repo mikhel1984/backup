@@ -1,6 +1,5 @@
 # backup
 
-## About
 Lua based program for 'version control' of text files. The information is stored in _bkp_ files in the same directory where the original files are located. CLI is used to switch between different revisions and do other operations with the file versions.
 
 ## Usage
