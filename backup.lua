@@ -4,7 +4,7 @@
 Save and restore changes in text files.
 See "usage" for details.
 
-2020, Stanislav Mikhel ]]
+2020-2021, Stanislav Mikhel ]]
 
 local usage = [[
 USAGE: ./backup.lua file cmd [option] [branch]

@@ -1,8 +1,12 @@
 # backup
 
+## About
 Lua based program for 'version control' of text files. The information is stored in _bkp_ files in the same directory where the original files are located. CLI is used to switch between different revisions and do other operations with the file versions.
 
-**USAGE**: ./backup.lua file command _(option)_ _(branch)_ 
+## Usage
+```
+./backup.lua file command [option] [branch]
+```
 
 Commands and options: 
 - **add** _(msg)_ _(branch)_ - save last changes in file
