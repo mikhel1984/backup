@@ -16,6 +16,7 @@ USAGE: ./backup.lua file cmd [option] [branch]
     log        [br] - show all commits
     vs   file2      - compare two files
     base n     [br] - update initial commit
+    pop        [br] - remove last commit
 ]]
 
 local EXT = ".bkp"   -- output extention
