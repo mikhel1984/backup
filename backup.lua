@@ -22,6 +22,11 @@ USAGE: ./backup.lua file cmd [option] [branch]
 local EXT = ".bkp"         -- output extention
 local CONFFILE = "bkpconf" -- file with settings
 
+-- functions
+local strfind  = string.find
+local strmatch = string.match
+local strsub   = string.sub
+
 -- file comparison
 local diff = {}
 
@@ -121,6 +126,9 @@ local function toTbl (ptr)
   return t
 end
 
+-- file mapping
+local filemap = {}
+
 -- prepare backup file name
 local function bkpname(fname,br)
   local map = filemap[fname]
@@ -128,9 +136,7 @@ local function bkpname(fname,br)
   return fname..(br and ('.'..br) or '')..EXT
 end
 
--- file mapping
-local filemap = {}
-
+-- store arguments here
 local arglist = arg
 
 -- parse command line arguments
@@ -183,8 +189,8 @@ backup.log = function (name)
   local fname = argparse._get_(name)
   local v = pcall(function() 
     for line in io.lines(fname) do
-      if string.find(line, "^BKP NEW ") then
-        print(string.sub(line, 9))
+      if strfind(line, "^BKP NEW ") then
+        print(strsub(line, 9))
       end
     end
   end)
@@ -199,9 +205,9 @@ backup._make = function (fname, last)
   local begin = {}
   local curr, index, id, del = nil, 0, 0, true
   for line in f:lines() do
-    if #line > 8 and string.find(line, "^BKP ") then 
+    if #line > 8 and strfind(line, "^BKP ") then 
       -- execute command
-      local cmd, v1, v2 = string.match(line, "^BKP (%u%u%u) (%d+) : (.*)")
+      local cmd, v1, v2 = strmatch(line, "^BKP (%u%u%u) (%d+) : (.*)")
       v1 = tonumber(v1)
       if cmd == "NEW" then                            -- commit
         if v1-1 == last then break 
@@ -232,7 +238,7 @@ end
 backup.add = function ()
   local fname, msg = argparse._get_()
   local saved, id = backup._make(fname) 
-  local new = diff.read(arg[1])
+  local new = diff.read(arglist[1])
   local common = diff.lcs(saved, new) 
   if #saved == #new and #new == #common-1 then return end
   -- save commit
@@ -266,7 +272,7 @@ backup.rev = function ()
   local saved, id = backup._make(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- save result
-  io.open(arg[1], "w"):write(table.concat(saved, '\n'))
+  io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
 end
 
 -- difference between the file and some revision
@@ -275,12 +281,12 @@ backup.diff = function ()
   local saved, id = backup._make(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- compare
-  diff.print(saved, diff.read(arg[1]))
+  diff.print(saved, diff.read(arglist[1]))
 end
 
 -- comare two files 
 backup.vs = function ()
-  local fname1, fname2 = arg[1], arg[3]
+  local fname1, fname2 = arglist[1], arglist[3]
   if not fname2 then return backup.wtf('?!') end
   diff.print(diff.read(fname1), diff.read(fname2))
 end
@@ -289,17 +295,17 @@ end
 backup.base = function ()
   local fname,ver = argparse._get_() 
   local tbl = diff.read(fname) 
-  local ind, comment = 0, '^BKP NEW '..(arg[3] or 'None')
+  local ind, comment = 0, '^BKP NEW '..(arglist[3] or 'None')
   for i = 1,#tbl do 
-    if string.find(tbl[i],comment) then 
-      io.write('Delete before "'..string.sub(tbl[i],9)..'"\nContinue (y/n)? ')
+    if strfind(tbl[i],comment) then 
+      io.write('Delete before "'..strsub(tbl[i],9)..'"\nContinue (y/n)? ')
       if 'y' == io.read() then ind = i end
       break
     end
   end
   if ind == 0 then return end
   -- save previous changes
-  local f = io.open(fname:gsub(EXT..'$',".v"..arg[3]..EXT),"w")
+  local f = io.open(fname:gsub(EXT..'$',".v"..arglist[3]..EXT),"w")
   for i = 1,ind-1 do f:write(tbl[i],'\n') end
   f:close() 
   -- save current version
@@ -309,7 +315,7 @@ backup.base = function ()
   for i = 1,#saved do f:write(saved[i],'\n') end
   -- start from the next commit
   ind = ind+1
-  while ind <= #tbl and not string.find(tbl[ind],"^BKP NEW ") do ind = ind+1 end 
+  while ind <= #tbl and not strfind(tbl[ind],"^BKP NEW ") do ind = ind+1 end 
   for j = ind,#tbl do f:write(tbl[j],'\n') end 
   f:close()
 end
@@ -321,7 +327,7 @@ backup.pop = function ()
   local line
   repeat 
     line = table.remove(tbl)
-  until string.find(line, "^BKP NEW ")
+  until strfind(line, "^BKP NEW ")
   if #tbl == 0 then
     os.remove(fname)
   else
@@ -329,7 +335,7 @@ backup.pop = function ()
     for i = 1, #tbl do f:write(tbl[i], '\n') end
     f:close()
   end
-  print("Remove", string.sub(line, 9))
+  print("Remove", strsub(line, 9))
 end
 
 -- simplify call
@@ -338,33 +344,35 @@ setmetatable(backup, {__index=function()
   return function() end
 end})
 
-
+-- operations with file group
 local group = {
-  block = { vs = true, }
+  -- not "defined"
+  block = {vs=true, log=true}
 }
 
+-- parse configuration file
 group.read_config = function ()
   return pcall(function ()
     local dir 
     for line in io.lines(CONFFILE) do
-      if string.find(line, "^%s*%-%-") then
+      if strfind(line, "^%s*%-%-") then
         -- skip line comment
-      elseif string.find(line, "=") then
+      elseif strfind(line, "=") then
         -- directory name
-        dir = string.match(line, "^%s*DIR%s*=%s*(.-)%s*$")
-      elseif string.find(line, ">") then 
+        dir = strmatch(line, "^%s*DIR%s*=%s*(.-)%s*$")
+      elseif strfind(line, ">") then 
         -- mapping
-        local src, dst = string.match(line, "^%s*(.-)%s*>%s*(.-)%s*$")
+        local src, dst = strmatch(line, "^%s*(.-)%s*>%s*(.-)%s*$")
         filemap[src] = dst 
       else
         -- single name
-        local src = string.match(line, "^%s*(.-)%s*$")
+        local src = strmatch(line, "^%s*(.-)%s*$")
         if #src > 0 then filemap[src] = src end
       end
     end
     -- add directory name
     if dir then
-      dir = dir..string.sub(package.config, 1, 1)  -- add separator
+      dir = dir..strsub(package.config, 1, 1)  -- add separator
       for k, v in pairs(filemap) do
         filemap[k] = dir..v
       end
@@ -373,12 +381,13 @@ group.read_config = function ()
   end)
 end
 
+-- apply command to files
 group.process = function ()
   if argparse[arg[1]] then
-    if arg[1] == 'vs' then 
-      return print("Not defined for group")
+    -- valid command
+    if group.block[arg[1]] then 
+      return print("Not defined for group!")
     end
-    -- apply to all files
     arglist = {0, arg[1], arg[2], arg[3]}
     for src, dst in pairs(filemap) do
       arglist[1] = dst
@@ -397,5 +406,5 @@ if group.read_config() then
   group.process()
 else
   -- simple processing
-  backup[arg[2]]()
+  backup[arglist[2]]()
 end
