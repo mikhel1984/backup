@@ -123,35 +123,39 @@ end
 
 -- prepare backup file name
 local function bkpname(fname,br)
+  local map = filemap[fname]
+  fname = map and map or fname
   return fname..(br and ('.'..br) or '')..EXT
 end
 
 -- file mapping
 local filemap = {}
 
+local arglist = arg
+
 -- parse command line arguments
 local argparse = {}
 
 -- add msg branch | add msg | add
-argparse.add = function (nm)
-  return bkpname(nm or arg[1], arg[4]), arg[3]
+argparse.add = function ()
+  return bkpname(arglist[1],arglist[4]), arglist[3]
 end
 
 -- log branch | log
-argparse.log = function (nm)
-  return bkpname(nm or arg[1], arg[3]), nil
+argparse.log = function ()
+  return bkpname(arglist[1],arglist[3]), nil
 end
 
 -- rev n branch | rev n | rev branch | rev
-argparse.rev = function (nm)
+argparse.rev = function ()
+  local n = tonumber(arglist[3]) 
   if arg[4] then 
-    return bkpname(nm or arg[1], arg[4]), tonumber(arg[3])
+    return bkpname(arglist[1],arglist[4]), n
   end
-  local n = tonumber(arg[3]) 
   if n then
-    return bkpname(nm or arg[1], nil), n
+    return bkpname(arglist[1],nil), n
   else
-    return bkpname(nm or arg[1], arg[3]), nil
+    return bkpname(arglist[1],arglist[3]), nil
   end
 end
 
@@ -160,14 +164,14 @@ argparse.diff = argparse.rev
 
 -- base n branch | base n
 argparse.base = function()
-  return bkpname(nm or arg[1], arg[4]), tonumber(arg[3])
+  return bkpname(arglist[1],arglist[4]), tonumber(arglist[3])
 end
 
 -- pop branch | pop
 argparse.pop = argparse.log
 
 -- return backup name and parameter
-argparse._get_ = function (nm)
+argparse._get_ = function ()
   return argparse[arg[2]]()
 end
 
@@ -175,8 +179,8 @@ end
 local backup = {}
 
 -- show commits
-backup.log = function ()
-  local fname = argparse._get_()
+backup.log = function (name)
+  local fname = argparse._get_(name)
   local v = pcall(function() 
     for line in io.lines(fname) do
       if string.find(line, "^BKP NEW ") then
@@ -334,17 +338,18 @@ setmetatable(backup, {__index=function()
   return function() end
 end})
 
---============== Call ===================
 
---backup[arg[2]]()
-
-local group = {}
+local group = {
+  block = { vs = true, }
+}
 
 group.read_config = function ()
   return pcall(function ()
     local dir 
     for line in io.lines(CONFFILE) do
-      if string.find(line, "=") then
+      if string.find(line, "^%s*%-%-") then
+        -- skip line comment
+      elseif string.find(line, "=") then
         -- directory name
         dir = string.match(line, "^%s*DIR%s*=%s*(.-)%s*$")
       elseif string.find(line, ">") then 
@@ -369,13 +374,28 @@ group.read_config = function ()
 end
 
 group.process = function ()
-  
+  if argparse[arg[1]] then
+    if arg[1] == 'vs' then 
+      return print("Not defined for group")
+    end
+    -- apply to all files
+    arglist = {0, arg[1], arg[2], arg[3]}
+    for src, dst in pairs(filemap) do
+      arglist[1] = dst
+      backup[arglist[2]]()
+    end
+  else
+    -- process command for single file
+    backup[arglist[2]]()
+  end
 end
 
-group.read()
+--============== Call ===================
 
-
-for k,v in pairs(filemap) do
-  print(k,v)
+if group.read_config() then
+  -- apply command to all files
+  group.process()
+else
+  -- simple processing
+  backup[arg[2]]()
 end
-
