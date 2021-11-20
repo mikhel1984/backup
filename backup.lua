@@ -19,16 +19,19 @@ USAGE: ./backup.lua file cmd [option] [branch]
     pop        [br] - remove last commit
 ]]
 
-local EXT = ".bkp"   -- output extention
+local EXT = ".bkp"         -- output extention
+local CONFFILE = "bkpconf" -- file with settings
 
 -- file comparison
 local diff = {}
+
 -- Convert text file into the table of strings
 diff.read = function (fname)
   local t = {}
   for line in io.lines(fname) do t[#t+1] = line end
   return t
 end
+
 -- Find longest common "substrings"
 diff.lcs = function (a, b)
   local an, bn, ab = #a, #b, 1  
@@ -79,6 +82,7 @@ diff.lcs = function (a, b)
   end
   return common 
 end
+
 -- show difference
 diff.print = function (a, b)
   local common = diff.lcs(a, b)
@@ -116,50 +120,63 @@ local function toTbl (ptr)
   end
   return t
 end
+
 -- prepare backup file name
 local function bkpname(fname,br)
   return fname..(br and ('.'..br) or '')..EXT
 end
 
+-- file mapping
+local filemap = {}
+
 -- parse command line arguments
 local argparse = {}
+
 -- add msg branch | add msg | add
-argparse.add = function ()
-  return bkpname(arg[1],arg[4]), arg[3]
+argparse.add = function (nm)
+  return bkpname(nm or arg[1], arg[4]), arg[3]
 end
+
 -- log branch | log
-argparse.log = function ()
-  return bkpname(arg[1],arg[3]), nil
+argparse.log = function (nm)
+  return bkpname(nm or arg[1], arg[3]), nil
 end
+
 -- rev n branch | rev n | rev branch | rev
-argparse.rev = function ()
+argparse.rev = function (nm)
   if arg[4] then 
-    return bkpname(arg[1],arg[4]), tonumber(arg[3])
+    return bkpname(nm or arg[1], arg[4]), tonumber(arg[3])
   end
   local n = tonumber(arg[3]) 
   if n then
-    return bkpname(arg[1],nil), n
+    return bkpname(nm or arg[1], nil), n
   else
-    return bkpname(arg[1],arg[3]), nil
+    return bkpname(nm or arg[1], arg[3]), nil
   end
 end
+
 -- diff n branch | diff n | diff branch | diff
 argparse.diff = argparse.rev
+
 -- base n branch | base n
 argparse.base = function()
-  return bkpname(arg[1],arg[4]), tonumber(arg[3])
+  return bkpname(nm or arg[1], arg[4]), tonumber(arg[3])
 end
+
 -- pop branch | pop
 argparse.pop = argparse.log
+
 -- return backup name and parameter
-argparse.get = function ()
+argparse._get_ = function (nm)
   return argparse[arg[2]]()
 end
 
+-- main functions
 local backup = {}
+
 -- show commits
 backup.log = function ()
-  local fname = argparse.get()
+  local fname = argparse._get_()
   local v = pcall(function() 
     for line in io.lines(fname) do
       if string.find(line, "^BKP NEW ") then
@@ -169,6 +186,7 @@ backup.log = function ()
   end)
   if not v then print("No file history") end 
 end
+
 -- prepare file version based on bkp file
 backup._make = function (fname, last) 
   local f = io.open(fname, 'r') 
@@ -205,9 +223,10 @@ backup._make = function (fname, last)
   f:close()
   return toTbl(begin.child), id
 end
+
 -- "commit"
 backup.add = function ()
-  local fname, msg = argparse.get()
+  local fname, msg = argparse._get_()
   local saved, id = backup._make(fname) 
   local new = diff.read(arg[1])
   local common = diff.lcs(saved, new) 
@@ -236,31 +255,35 @@ backup.add = function ()
   end
   print(string.format("Save [%d] %s", id+1, msg or ''))
 end
+
 -- restore the desired file version
 backup.rev = function ()
-  local fname, ver = argparse.get()
+  local fname, ver = argparse._get_()
   local saved, id = backup._make(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- save result
   io.open(arg[1], "w"):write(table.concat(saved, '\n'))
 end
+
 -- difference between the file and some revision
 backup.diff = function ()
-  local fname, ver = argparse.get()
+  local fname, ver = argparse._get_()
   local saved, id = backup._make(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- compare
   diff.print(saved, diff.read(arg[1]))
 end
+
 -- comare two files 
 backup.vs = function ()
   local fname1, fname2 = arg[1], arg[3]
   if not fname2 then return backup.wtf('?!') end
   diff.print(diff.read(fname1), diff.read(fname2))
 end
+
 -- update initial version
 backup.base = function ()
-  local fname,ver = argparse.get() 
+  local fname,ver = argparse._get_() 
   local tbl = diff.read(fname) 
   local ind, comment = 0, '^BKP NEW '..(arg[3] or 'None')
   for i = 1,#tbl do 
@@ -286,9 +309,10 @@ backup.base = function ()
   for j = ind,#tbl do f:write(tbl[j],'\n') end 
   f:close()
 end
+
 -- remove last revision
 backup.pop = function ()
-  local fname = argparse.get()
+  local fname = argparse._get_()
   local tbl = diff.read(fname)
   local line
   repeat 
@@ -304,13 +328,54 @@ backup.pop = function ()
   print("Remove", string.sub(line, 9))
 end
 
+-- simplify call
 setmetatable(backup, {__index=function() 
   print(usage) 
   return function() end
 end})
 
-
 --============== Call ===================
 
-backup[arg[2]]()
+--backup[arg[2]]()
+
+local group = {}
+
+group.read_config = function ()
+  return pcall(function ()
+    local dir 
+    for line in io.lines(CONFFILE) do
+      if string.find(line, "=") then
+        -- directory name
+        dir = string.match(line, "^%s*DIR%s*=%s*(.-)%s*$")
+      elseif string.find(line, ">") then 
+        -- mapping
+        local src, dst = string.match(line, "^%s*(.-)%s*>%s*(.-)%s*$")
+        filemap[src] = dst 
+      else
+        -- single name
+        local src = string.match(line, "^%s*(.-)%s*$")
+        if #src > 0 then filemap[src] = src end
+      end
+    end
+    -- add directory name
+    if dir then
+      dir = dir..string.sub(package.config, 1, 1)  -- add separator
+      for k, v in pairs(filemap) do
+        filemap[k] = dir..v
+      end
+    end
+    return true
+  end)
+end
+
+group.process = function ()
+  
+end
+
+group.read()
+
+
+for k,v in pairs(filemap) do
+  print(k,v)
+end
 
