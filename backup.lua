@@ -145,24 +145,24 @@ local argparse = {}
 
 -- add msg branch | add msg | add
 argparse.add = function ()
-  return bkpname(arglist[1],arglist[4]), arglist[3]
+  return bkpname(arglist[1],arglist[4]), arglist[3], arglist[4]
 end
 
 -- log branch | log
 argparse.log = function ()
-  return bkpname(arglist[1],arglist[3]), nil
+  return bkpname(arglist[1],arglist[3]), nil, arglist[3]
 end
 
 -- rev n branch | rev n | rev branch | rev
 argparse.rev = function ()
   local n = tonumber(arglist[3]) 
   if arg[4] then 
-    return bkpname(arglist[1],arglist[4]), n
+    return bkpname(arglist[1],arglist[4]), n, arglist[4]
   end
   if n then
-    return bkpname(arglist[1],nil), n
+    return bkpname(arglist[1],nil), n, nil
   else
-    return bkpname(arglist[1],arglist[3]), nil
+    return bkpname(arglist[1],arglist[3]), nil, arglist[3]
   end
 end
 
@@ -171,13 +171,13 @@ argparse.diff = argparse.rev
 
 -- base n branch | base n
 argparse.base = function()
-  return bkpname(arglist[1],arglist[4]), tonumber(arglist[3])
+  return bkpname(arglist[1],arglist[4]), tonumber(arglist[3]), arglist[4]
 end
 
 -- pop branch | pop
 argparse.pop = argparse.log
 
--- return backup name and parameter
+-- return backup name, parameter, branch
 argparse._get_ = function ()
   return argparse[arglist[2]]()
 end
@@ -186,8 +186,8 @@ end
 local backup = {}
 
 -- show commits
-backup.log = function (name)
-  local fname = argparse._get_(name)
+backup.log = function ()
+  local fname = argparse._get_()
   local v = pcall(function() 
     for line in io.lines(fname) do
       if strfind(line, "^BKP NEW ") then
@@ -199,7 +199,7 @@ backup.log = function (name)
 end
 
 -- prepare file version based on bkp file
-backup._make = function (fname, last) 
+backup._make_ = function (fname, last) 
   local f = io.open(fname, 'r') 
   if f == nil then return {}, 0 end
   -- continue if the file found
@@ -237,8 +237,8 @@ end
 
 -- "commit"
 backup.add = function ()
-  local fname, msg = argparse._get_()
-  local saved, id = backup._make(fname) 
+  local fname, msg, br = argparse._get_()
+  local saved, id = backup._make_(fname) 
   local new = diff.read(arglist[1])
   local common = diff.lcs(saved, new) 
   if #saved == #new and #new == #common-1 then return end
@@ -264,13 +264,13 @@ backup.add = function ()
       end
     end
   end
-  print(strformat("Save [%d] %s", id+1, msg or ''))
+  print(strformat("Save [%s%d] %s", (br and br..' ' or ''), id+1, msg or ''))
 end
 
 -- restore the desired file version
 backup.rev = function ()
   local fname, ver = argparse._get_()
-  local saved, id = backup._make(fname, ver) 
+  local saved, id = backup._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- save result
   io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
@@ -279,7 +279,7 @@ end
 -- difference between the file and some revision
 backup.diff = function ()
   local fname, ver = argparse._get_()
-  local saved, id = backup._make(fname, ver) 
+  local saved, id = backup._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- compare
   diff.print(saved, diff.read(arglist[1]))
@@ -310,7 +310,7 @@ backup.base = function ()
   for i = 1,ind-1 do f:write(tbl[i],'\n') end
   f:close() 
   -- save current version
-  local saved,id = backup._make(fname,ver)
+  local saved,id = backup._make_(fname,ver)
   f = io.open(fname,'w') 
   f:write(strformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
   for i = 1,#saved do f:write(saved[i],'\n') end
@@ -388,19 +388,18 @@ end
 
 -- apply command to files
 group.process = function ()
-  if argparse[arg[1]] then
-    -- valid command
-    if group.block[arg[1]] then 
-      print(strformat("Choose file for '%s':", arg[1]))
-      for src, dst in pairs(filemap) do
-        print(src, dst)
-      end
-      return
+  if group.block[arg[1]] then 
+    -- not "defined"
+    print(strformat("Choose file for '%s':\n", arg[1]))
+    for src in pairs(filemap) do
+      print(src)
     end
+  elseif argparse[arg[1]] then
+    -- valid command
     arglist = {0, arg[1], arg[2], arg[3]}
     for src in pairs(filemap) do
       arglist[1] = src
-      print(src..":")
+      print(strformat("\t%s:", src))
       backup[arglist[2]]()
     end
   else
