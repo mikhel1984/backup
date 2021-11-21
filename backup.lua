@@ -17,6 +17,18 @@ USAGE: ./backup.lua file cmd [option] [branch]
     vs   file2      - compare two files
     base n     [br] - update initial commit
     pop        [br] - remove last commit
+
+If 'bkplist' file is defined, call 
+
+  ./backup cmd [option] [branch] 
+
+to apply command to the group of files. The 
+valid 'backup' lines are:
+
+  DIR = dirname     - directory to store bkp files
+  filename          - add file for processing
+  path/name > shortname - add with mapping
+  -- comment        - single line comment
 ]]
 
 local EXT = ".bkp"         -- output extention
