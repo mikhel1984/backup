@@ -20,12 +20,13 @@ USAGE: ./backup.lua file cmd [option] [branch]
 ]]
 
 local EXT = ".bkp"         -- output extention
-local CONFFILE = "bkpconf" -- file with settings
+local CONFFILE = "bkplist" -- file with settings
 
 -- functions
-local strfind  = string.find
-local strmatch = string.match
-local strsub   = string.sub
+local strfind   = string.find
+local strmatch  = string.match
+local strsub    = string.sub
+local strformat = string.format
 
 -- file comparison
 local diff = {}
@@ -178,7 +179,7 @@ argparse.pop = argparse.log
 
 -- return backup name and parameter
 argparse._get_ = function ()
-  return argparse[arg[2]]()
+  return argparse[arglist[2]]()
 end
 
 -- main functions
@@ -243,13 +244,13 @@ backup.add = function ()
   if #saved == #new and #new == #common-1 then return end
   -- save commit
   local f = io.open(fname, "a")
-  f:write(string.format("BKP NEW %d : %s\n", id+1, msg or ''))
+  f:write(strformat("BKP NEW %d : %s\n", id+1, msg or ''))
   -- remove old lines
   if #saved > #common-1 then
     for n = 1, #common do
       local n1, n2 = common[n-1][1]+1, common[n][1]
       if n2 > n1 then
-        f:write(string.format("BKP REM %d : %d\n", n1, n2-n1))
+        f:write(strformat("BKP REM %d : %d\n", n1, n2-n1))
       end
     end
   end
@@ -258,12 +259,12 @@ backup.add = function ()
     for n = 1, #common do
       local n1, n2 = common[n-1][2]+1, common[n][2]
       if n2 > n1 then
-        f:write(string.format("BKP ADD %d : %d\n", n1, n2-n1))
+        f:write(strformat("BKP ADD %d : %d\n", n1, n2-n1))
         for i = n1, n2-1 do f:write(new[i],'\n') end
       end
     end
   end
-  print(string.format("Save [%d] %s", id+1, msg or ''))
+  print(strformat("Save [%d] %s", id+1, msg or ''))
 end
 
 -- restore the desired file version
@@ -311,7 +312,7 @@ backup.base = function ()
   -- save current version
   local saved,id = backup._make(fname,ver)
   f = io.open(fname,'w') 
-  f:write(string.format("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
+  f:write(strformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
   for i = 1,#saved do f:write(saved[i],'\n') end
   -- start from the next commit
   ind = ind+1
@@ -346,8 +347,12 @@ end})
 
 -- operations with file group
 local group = {
-  -- not "defined"
-  block = {vs=true, log=true}
+  block = {
+    vs=true,   -- require two file names
+    -- comment to make available
+    log=true,  -- can be too long
+    base=true, -- require confirm for each file
+  }
 }
 
 -- parse configuration file
@@ -386,11 +391,16 @@ group.process = function ()
   if argparse[arg[1]] then
     -- valid command
     if group.block[arg[1]] then 
-      return print("Not defined for group!")
+      print(strformat("Choose file for '%s':", arg[1]))
+      for src, dst in pairs(filemap) do
+        print(src, dst)
+      end
+      return
     end
     arglist = {0, arg[1], arg[2], arg[3]}
-    for src, dst in pairs(filemap) do
-      arglist[1] = dst
+    for src in pairs(filemap) do
+      arglist[1] = src
+      print(src..":")
       backup[arglist[2]]()
     end
   else
