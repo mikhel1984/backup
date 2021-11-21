@@ -15,6 +15,7 @@ Commands and options:
 - **vs** _file2_ - compare with other file 
 - **base** _(n)_ _(branch)_ - update initial commit
 - **pop** _(branch)_ - remove last commit
+- **summ** _(branch)_ - short summary
 
 Default value for _n_ is the last revision, default _branch_ or _msg_ name is empty string.
 

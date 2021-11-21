@@ -17,6 +17,7 @@ USAGE: ./backup.lua file cmd [option] [branch]
     vs   file2      - compare two files
     base n     [br] - update initial commit
     pop        [br] - remove last commit
+    summ       [br] - short summary
 
 If 'bkplist' file is defined, call 
 
@@ -164,6 +165,9 @@ end
 argparse.log = function ()
   return bkpname(arglist[1],arglist[3]), nil, arglist[3]
 end
+
+-- summ branch | summ
+argparse.summ = argparse.log
 
 -- rev n branch | rev n | rev branch | rev
 argparse.rev = function ()
@@ -347,6 +351,23 @@ backup.pop = function ()
     io.open(fname, 'w'):write(table.concat(tbl, '\n'))
   end
   print("Remove", strsub(line, 9))
+end
+
+-- short summary
+backup.summ = function ()
+  local fname = argparse._get_()
+  local v = pcall(function() 
+    local len, last, total = 0, "", 0
+    for line in io.lines(fname) do
+      len = len + #line 
+      if strfind(line, "^BKP NEW ") then
+        total = total + 1
+        last = strsub(line, 9)
+      end
+    end
+    print(strformat("size: %.1f kB | commits: %d | last: %s", (len / 1024), total, last))
+  end)
+  if not v then print("commits: 0") end 
 end
 
 -- simplify call
