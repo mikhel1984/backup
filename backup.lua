@@ -332,9 +332,7 @@ backup.pop = function ()
   if #tbl == 0 then
     os.remove(fname)
   else
-    local f = io.open(fname, 'w')
-    for i = 1, #tbl do f:write(tbl[i], '\n') end
-    f:close()
+    io.open(fname, 'w'):write(table.concat(tbl, '\n'))
   end
   print("Remove", strsub(line, 9))
 end
@@ -378,9 +376,7 @@ group.read_config = function ()
     -- add directory name
     if dir then
       dir = dir..strsub(package.config, 1, 1)  -- add separator
-      for k, v in pairs(filemap) do
-        filemap[k] = dir..v
-      end
+      for k, v in pairs(filemap) do filemap[k] = dir..v end
     end
     return true
   end)
@@ -391,9 +387,7 @@ group.process = function ()
   if group.block[arg[1]] then 
     -- not "defined"
     print(strformat("Choose file for '%s':\n", arg[1]))
-    for src in pairs(filemap) do
-      print(src)
-    end
+    for src in pairs(filemap) do print(src) end
   elseif argparse[arg[1]] then
     -- valid command
     arglist = {0, arg[1], arg[2], arg[3]}
