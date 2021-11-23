@@ -46,7 +46,7 @@ require 'backup'
 FILES = {
 ["file1"] = "foo/file1",
 ["file2"] = "foo/file2",
-["path/to/file3"] > "foo/file3",
+["path/to/file3"] = "foo/file3",
 }
 
 --    2nd version
@@ -62,8 +62,8 @@ DIR = foo
 FILES = {
 "file1",
 "file2",
-["path/to/file3"] = "file3",
 }
+FILES["path/to/file3"] = "file3"
 
 backup()
 ```
