@@ -188,11 +188,11 @@ argparse._get_ = function ()
   return argparse[arglist[2]]()
 end
 
--- main functions
-local main = {}
+-- available commands
+local command = {}
 
 -- show commits
-main.log = function ()
+command.log = function ()
   local fname = argparse._get_()
   local v = pcall(function() 
     for line in io.lines(fname) do
@@ -205,7 +205,7 @@ main.log = function ()
 end
 
 -- prepare file version based on bkp file
-main._make_ = function (fname, last) 
+command._make_ = function (fname, last) 
   local f = io.open(fname, 'r') 
   if f == nil then return {}, 0 end
   -- continue if the file found
@@ -242,9 +242,9 @@ main._make_ = function (fname, last)
 end
 
 -- "commit"
-main.add = function ()
+command.add = function ()
   local fname, msg, br = argparse._get_()
-  local saved, id = main._make_(fname) 
+  local saved, id = command._make_(fname) 
   local new = diff.read(arglist[1])
   local common = diff.lcs(saved, new) 
   if #saved == #new and #new == #common-1 then return end
@@ -274,32 +274,32 @@ main.add = function ()
 end
 
 -- restore the desired file version
-main.rev = function ()
+command.rev = function ()
   local fname, ver = argparse._get_()
-  local saved, id = main._make_(fname, ver) 
+  local saved, id = command._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- save result
   io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
 end
 
 -- difference between the file and some revision
-main.diff = function ()
+command.diff = function ()
   local fname, ver = argparse._get_()
-  local saved, id = main._make_(fname, ver) 
+  local saved, id = command._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- compare
   diff.print(saved, diff.read(arglist[1]))
 end
 
 -- comare two files 
-main.vs = function ()
+command.vs = function ()
   local fname1, fname2 = arglist[1], arglist[3]
-  if not fname2 then return main.wtf('?!') end
+  if not fname2 then return command.wtf('?!') end
   diff.print(diff.read(fname1), diff.read(fname2))
 end
 
 -- update initial version
-main.base = function ()
+command.base = function ()
   local fname,ver = argparse._get_() 
   local tbl = diff.read(fname) 
   local ind, comment = 0, '^BKP NEW '..(arglist[3] or 'None')
@@ -316,7 +316,7 @@ main.base = function ()
   for i = 1,ind-1 do f:write(tbl[i],'\n') end
   f:close() 
   -- save current version
-  local saved,id = main._make_(fname,ver)
+  local saved,id = command._make_(fname,ver)
   f = io.open(fname,'w') 
   f:write(strformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
   for i = 1,#saved do f:write(saved[i],'\n') end
@@ -328,7 +328,7 @@ main.base = function ()
 end
 
 -- remove last revision
-main.pop = function ()
+command.pop = function ()
   local fname = argparse._get_()
   local tbl = diff.read(fname)
   local line
@@ -344,7 +344,7 @@ main.pop = function ()
 end
 
 -- short summary
-main.summ = function ()
+command.summ = function ()
   local fname = argparse._get_()
   local v = pcall(function() 
     local len, last, total = 0, "", 0
@@ -361,37 +361,31 @@ main.summ = function ()
 end
 
 -- call unexpected argument
-setmetatable(main, {__index=function() 
+setmetatable(command, {__index=function() 
   print(strformat(usage, arg[0])) 
   return function() end
 end})
 
--- Interface
-
---local
-backup = { 
-  diff = diff,                         -- can be used for other purposes
-  sep = strsub(package.config, 1, 1),  -- system-dependent separator
-  -- execute some commands only for individual files
-  individual = {
-    vs=true,   -- require two file names
-    -- comment to make available
-    log=true,  -- can be too long
-    base=true, -- require confirm for each file
-  },
+-- don't call for file group
+local individual = {
+  vs=true,   -- require two file names
+  -- comment to make available
+  log=true,  -- can be too long
+  base=true, -- require confirm for each file
 }
- 
 
-backup.prepare = function ()
+-- mapping 'file > path'
+local function updateFiles()
   if FILES then
-    local dir = DIR and DIR..backup.sep or ""
+    local sep = strsub(package.config, 1, 1)  -- system-dependent separator
+    local dir = DIR and DIR..sep or ""
     local name = {}
     -- single files
     for _,v in ipairs(FILES) do
       name[v] = true
       filemap[v] = dir..v
     end
-    -- mapping
+    -- explicit definitions
     for k,v in pairs(FILES) do
       if not name[v] then
         filemap[k] = dir..v
@@ -400,8 +394,10 @@ backup.prepare = function ()
   end
 end
 
-backup.proc = function ()
-  if backup.individual[ arg[1] ] then
+-- execute operation
+backup = function ()
+  updateFiles()
+  if individual[ arg[1] ] then
     -- not "defined"
     print(strformat("Choose file for '%s':\n", arg[1]))
     for src in pairs(filemap) do print(src) end
@@ -411,15 +407,17 @@ backup.proc = function ()
     for src in pairs(filemap) do
       arglist[1] = src
       print(strformat("\t%s:", src))
-      main[ arglist[2] ]()
+      command[ arglist[2] ]()
     end
   else
     -- process command for single file
     arglist = arg
-    main[ arglist[2] ]()
+    command[ arglist[2] ]()
   end
 end
 
-setmetatable(backup, { __call = backup.proc })
-
-return backup
+-- for further use
+return {
+  diff = diff, 
+  command = command,
+}
