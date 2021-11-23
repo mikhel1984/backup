@@ -191,21 +191,37 @@ end
 -- available commands
 local command = {}
 
+-- collect commit lines
+command._commits_ = function (fname)
+  local ok, res = pcall(function ()
+    local list = {}
+    for line in io.lines(fname) do
+      if strfind(line, "^BKP NEW ") then
+        list[#list+1] = line
+      end
+    end
+    return list
+  end) 
+  return ok and res or {}
+end
+
 -- show commits
 command.log = function ()
   local fname = argparse._get_()
-  local v = pcall(function() 
-    for line in io.lines(fname) do
-      if strfind(line, "^BKP NEW ") then
-        print(strsub(line, 9))
-      end
-    end
-  end)
-  if not v then print("No file history") end 
+  for _, v in ipairs(command._commits_(fname)) do
+    print(strsub(v, 9))
+  end
 end
 
 -- prepare file version based on bkp file
 command._make_ = function (fname, last) 
+  -- update revision
+  if last and last <= 0 then
+      -- search in backward direction
+      local tmp = command._commits_(fname)
+      local v = strmatch(tmp[#tmp + last] or "", "^BKP NEW (%d+) : .*")
+      last = tonumber(v)  -- get last commit if out of range
+  end
   local f = io.open(fname, 'r') 
   if f == nil then return {}, 0 end
   -- continue if the file found
@@ -278,7 +294,7 @@ end
 command.rev = function ()
   local fname, ver = argparse._get_()
   local saved, id, msg = command._make_(fname, ver) 
-  if ver and id ~= ver then return print("No revision", ver) end
+  if id == 0 then return print("No commits") end
   -- save result
   io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
   print(strformat("Revision %s", msg))
@@ -287,9 +303,10 @@ end
 -- difference between the file and some revision
 command.diff = function ()
   local fname, ver = argparse._get_()
-  local saved, id = command._make_(fname, ver) 
-  if ver and id ~= ver then return print("No revision", ver) end
+  local saved, id, msg = command._make_(fname, ver) 
+  if id == 0 then return print("No commits", ver) end
   -- compare
+  print(strformat("Revision %s", msg))
   diff.print(saved, diff.read(arglist[1]))
 end
 

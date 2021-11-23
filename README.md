@@ -27,7 +27,7 @@ Commands and options:
 - **pop** _(branch)_ - remove last commit
 - **summ** _(branch)_ - short summary
 
-Default value for _n_ is the last revision, default _branch_ or _msg_ name is empty string.
+Default value for _n_ is the last revision, negative values can be used for backward search, default _branch_ or _msg_ name is empty string.
 
 ## File group
 
