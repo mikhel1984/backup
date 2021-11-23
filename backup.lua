@@ -366,75 +366,60 @@ setmetatable(main, {__index=function()
   return function() end
 end})
 
--- operations with file group
-local individual = {
+-- Interface
+
+--local
+backup = { 
+  diff = diff,                         -- can be used for other purposes
+  sep = strsub(package.config, 1, 1),  -- system-dependent separator
+  -- execute some commands only for individual files
+  individual = {
     vs=true,   -- require two file names
     -- comment to make available
     log=true,  -- can be too long
     base=true, -- require confirm for each file
+  },
 }
+ 
 
--- parse configuration file
---[[
-group.read_config = function ()
-  return pcall(function ()
-    local dir 
-    for line in io.lines(CONFFILE) do
-      if strfind(line, "^%s*%-%-") then
-        -- skip line comment
-      elseif strfind(line, "=") then
-        -- directory name
-        dir = strmatch(line, "^%s*DIR%s*=%s*(.-)%s*$")
-      elseif strfind(line, ">") then 
-        -- mapping
-        local src, dst = strmatch(line, "^%s*(.-)%s*>%s*(.-)%s*$")
-        filemap[src] = dst 
-      else
-        -- single name
-        local src = strmatch(line, "^%s*(.-)%s*$")
-        if #src > 0 then filemap[src] = src end
+backup.prepare = function ()
+  if FILES then
+    local dir = DIR and DIR..backup.sep or ""
+    local name = {}
+    -- single files
+    for _,v in ipairs(FILES) do
+      name[v] = true
+      filemap[v] = dir..v
+    end
+    -- mapping
+    for k,v in pairs(FILES) do
+      if not name[v] then
+        filemap[k] = dir..v
       end
     end
-    -- add directory name
-    if dir then
-      dir = dir..strsub(package.config, 1, 1)  -- add separator
-      for k, v in pairs(filemap) do filemap[k] = dir..v end
-    end
-    return true
-  end)
+  end
 end
-]]
 
---[[
--- apply command to files
-group.process = function ()
-  if group.block[arg[1] ] then 
+backup.proc = function ()
+  if backup.individual[ arg[1] ] then
     -- not "defined"
     print(strformat("Choose file for '%s':\n", arg[1]))
     for src in pairs(filemap) do print(src) end
-  elseif argparse[arg[1] ] then
-    -- valid command
+  elseif argparse[ arg[1] ] then 
+     -- valid group command
     arglist = {0, arg[1], arg[2], arg[3]}
     for src in pairs(filemap) do
       arglist[1] = src
       print(strformat("\t%s:", src))
-      main[arglist[2] ]()
+      main[ arglist[2] ]()
     end
   else
     -- process command for single file
-    main[arglist[2] ]()
+    arglist = arg
+    main[ arglist[2] ]()
   end
 end
 
---============== Call ===================
+setmetatable(backup, { __call = backup.proc })
 
-if group.read_config() then
-  -- apply command to all files
-  group.process()
-else
-  -- simple processing
-  main[arglist[2] ]()
-end
-]]
-
-backup = { diff = diff }  -- can be used for other purposes
+return backup
