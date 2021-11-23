@@ -1,10 +1,20 @@
 # backup
 
-**Lua** based local version control program for text files. The information is stored in _bkp_ files in the same directory where the original files are located. CLI is used to switch between different revisions and do other operations with the file versions.
+**Lua** based library for the local version control of text files. The information is stored in _bkp_ files in the same directory where the original files are located. CLI is used to switch between different revisions and do other operations with the file versions.
 
 ## Usage
+
+Put into your project directory a **Lua** file with the following minimal content:
+
+```lua
+require "backup"
+
+backup()
 ```
-./backup.lua file command [option] [branch]
+Make it executable for convenience. If the file name, for example, is _vc.lua_, then the program can be called as follows
+
+```
+./vc.lua [file] command [option] [branch]
 ```
 
 Commands and options: 
@@ -21,30 +31,39 @@ Default value for _n_ is the last revision, default _branch_ or _msg_ name is em
 
 ## File group
 
-If the project conatains more than one file, it is useful to create _bkplist_ file with the list of all required source names. In this case the program is called in form 
-```
-./backup.lua command [option] [branch]
-```
-Only part of operations with the group of files is available, but manipulations with individual files still can be done. The _bkplist_ can define the directory to store _bkp_ files ("DIR = ...", directory must exist) and the name mapping ("source > backup"). For conveniencies, line comments in **Lua** style can be used (but only in the begining of a line).
+If the project conatains more than one file, it is useful to create talbe _FILES_ with the file list. Variable _EXT_ can be used to change the backup file extention.
+In other to store all the backups into the same single directory, set its name into the _DIR_ variable (the directory must exist). If _DIR_ is defined, each files in subdirectories must be matched with short names using key-value notation.
+Only part of operations with the group of files is available, but manipulations with individual files still can be done. 
 
 ### Example 
 
-Assume that we want to work with group of files and store _bkp_ in the _foo_ directory. The following three versions of _bkplist_ are equal. 
-```
+Assume that we want to work with group of files and store _bkp_ in the _foo_ directory. The following three versions of configuratino file are equal. 
+```lua
+#!/usr/local/lib/lua
+require 'backup'
+
 --    1st version
-file1         > foo/file1
-file2         > foo/file2
-path/to/file3 > foo/file3
+FILES = {
+["file1"] = "foo/file1",
+["file2"] = "foo/file2",
+["path/to/file3"] > "foo/file3",
+}
 
 --    2nd version
 DIR = foo
-file1         > file1
-file2         > file2
-path/to/file3 > file3
+FILES = {
+["file1"] = "file1",
+["file2"] = "file2",
+["path/to/file3"] = "file3",
+}
 
 --    3rd version
 DIR = foo
-file1
-file2
-path/to/file3 > file3
+FILES = {
+"file1",
+"file2",
+["path/to/file3"] = "file3",
+}
+
+backup()
 ```
