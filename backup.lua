@@ -6,8 +6,12 @@ See "usage" for details.
 
 2020-2021, Stanislav Mikhel ]]
 
+-- output extention
+EXT = ".bkp"      
+
+-- help
 local usage = [[
-USAGE: ./backup.lua file cmd [option] [branch]
+USAGE: %s [file] cmd [option] [branch]
 
   Commands:
     add  [msg] [br] - save changes in file
@@ -19,21 +23,7 @@ USAGE: ./backup.lua file cmd [option] [branch]
     pop        [br] - remove last commit
     summ       [br] - short summary
 
-If 'bkplist' file is defined, call 
-
-  ./backup cmd [option] [branch] 
-
-to apply command to the group of files. The 
-valid 'backup' lines are:
-
-  DIR = dirname     - directory to store bkp files
-  filename          - add file for processing
-  path/name > shortname - add with mapping
-  -- comment        - single line comment
 ]]
-
-local EXT = ".bkp"         -- output extention
-local CONFFILE = "bkplist" -- file with settings
 
 -- functions
 local strfind   = string.find
@@ -51,7 +41,7 @@ diff.read = function (fname)
   return t
 end
 
--- Find longest common "substrings"
+-- Find longest common subgroup
 diff.lcs = function (a, b)
   local an, bn, ab = #a, #b, 1  
   -- skip begin
@@ -199,10 +189,10 @@ argparse._get_ = function ()
 end
 
 -- main functions
-local backup = {}
+local main = {}
 
 -- show commits
-backup.log = function ()
+main.log = function ()
   local fname = argparse._get_()
   local v = pcall(function() 
     for line in io.lines(fname) do
@@ -215,7 +205,7 @@ backup.log = function ()
 end
 
 -- prepare file version based on bkp file
-backup._make_ = function (fname, last) 
+main._make_ = function (fname, last) 
   local f = io.open(fname, 'r') 
   if f == nil then return {}, 0 end
   -- continue if the file found
@@ -252,9 +242,9 @@ backup._make_ = function (fname, last)
 end
 
 -- "commit"
-backup.add = function ()
+main.add = function ()
   local fname, msg, br = argparse._get_()
-  local saved, id = backup._make_(fname) 
+  local saved, id = main._make_(fname) 
   local new = diff.read(arglist[1])
   local common = diff.lcs(saved, new) 
   if #saved == #new and #new == #common-1 then return end
@@ -284,32 +274,32 @@ backup.add = function ()
 end
 
 -- restore the desired file version
-backup.rev = function ()
+main.rev = function ()
   local fname, ver = argparse._get_()
-  local saved, id = backup._make_(fname, ver) 
+  local saved, id = main._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- save result
   io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
 end
 
 -- difference between the file and some revision
-backup.diff = function ()
+main.diff = function ()
   local fname, ver = argparse._get_()
-  local saved, id = backup._make_(fname, ver) 
+  local saved, id = main._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- compare
   diff.print(saved, diff.read(arglist[1]))
 end
 
 -- comare two files 
-backup.vs = function ()
+main.vs = function ()
   local fname1, fname2 = arglist[1], arglist[3]
-  if not fname2 then return backup.wtf('?!') end
+  if not fname2 then return main.wtf('?!') end
   diff.print(diff.read(fname1), diff.read(fname2))
 end
 
 -- update initial version
-backup.base = function ()
+main.base = function ()
   local fname,ver = argparse._get_() 
   local tbl = diff.read(fname) 
   local ind, comment = 0, '^BKP NEW '..(arglist[3] or 'None')
@@ -326,7 +316,7 @@ backup.base = function ()
   for i = 1,ind-1 do f:write(tbl[i],'\n') end
   f:close() 
   -- save current version
-  local saved,id = backup._make_(fname,ver)
+  local saved,id = main._make_(fname,ver)
   f = io.open(fname,'w') 
   f:write(strformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
   for i = 1,#saved do f:write(saved[i],'\n') end
@@ -338,7 +328,7 @@ backup.base = function ()
 end
 
 -- remove last revision
-backup.pop = function ()
+main.pop = function ()
   local fname = argparse._get_()
   local tbl = diff.read(fname)
   local line
@@ -354,7 +344,7 @@ backup.pop = function ()
 end
 
 -- short summary
-backup.summ = function ()
+main.summ = function ()
   local fname = argparse._get_()
   local v = pcall(function() 
     local len, last, total = 0, "", 0
@@ -370,23 +360,22 @@ backup.summ = function ()
   if not v then print("commits: 0") end 
 end
 
--- simplify call
-setmetatable(backup, {__index=function() 
-  print(usage) 
+-- call unexpected argument
+setmetatable(main, {__index=function() 
+  print(strformat(usage, arg[0])) 
   return function() end
 end})
 
 -- operations with file group
-local group = {
-  block = {
+local individual = {
     vs=true,   -- require two file names
     -- comment to make available
     log=true,  -- can be too long
     base=true, -- require confirm for each file
-  }
 }
 
 -- parse configuration file
+--[[
 group.read_config = function ()
   return pcall(function ()
     local dir 
@@ -414,24 +403,26 @@ group.read_config = function ()
     return true
   end)
 end
+]]
 
+--[[
 -- apply command to files
 group.process = function ()
-  if group.block[arg[1]] then 
+  if group.block[arg[1] ] then 
     -- not "defined"
     print(strformat("Choose file for '%s':\n", arg[1]))
     for src in pairs(filemap) do print(src) end
-  elseif argparse[arg[1]] then
+  elseif argparse[arg[1] ] then
     -- valid command
     arglist = {0, arg[1], arg[2], arg[3]}
     for src in pairs(filemap) do
       arglist[1] = src
       print(strformat("\t%s:", src))
-      backup[arglist[2]]()
+      main[arglist[2] ]()
     end
   else
     -- process command for single file
-    backup[arglist[2]]()
+    main[arglist[2] ]()
   end
 end
 
@@ -442,5 +433,8 @@ if group.read_config() then
   group.process()
 else
   -- simple processing
-  backup[arglist[2]]()
+  main[arglist[2] ]()
 end
+]]
+
+backup = { diff = diff }  -- can be used for other purposes
