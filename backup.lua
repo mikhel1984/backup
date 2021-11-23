@@ -209,7 +209,7 @@ command._make_ = function (fname, last)
   local f = io.open(fname, 'r') 
   if f == nil then return {}, 0 end
   -- continue if the file found
-  local begin = {}
+  local begin, rev = {}
   local curr, index, id, del = nil, 0, 0, true
   for line in f:lines() do
     if #line > 8 and strfind(line, "^BKP ") then 
@@ -221,6 +221,7 @@ command._make_ = function (fname, last)
         else 
           curr, index, id, del = begin, 0, v1, true   -- reset all
         end
+        rev = strsub(line, 9)
       elseif cmd == "ADD" then                        -- insert lines
         if del then
           curr, index, del = begin, 0, false          -- reset, change flag
@@ -238,7 +239,7 @@ command._make_ = function (fname, last)
     end
   end
   f:close()
-  return toTbl(begin.child), id
+  return toTbl(begin.child), id, rev
 end
 
 -- "commit"
@@ -276,10 +277,11 @@ end
 -- restore the desired file version
 command.rev = function ()
   local fname, ver = argparse._get_()
-  local saved, id = command._make_(fname, ver) 
+  local saved, id, msg = command._make_(fname, ver) 
   if ver and id ~= ver then return print("No revision", ver) end
   -- save result
   io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
+  print(strformat("Revision %s", msg))
 end
 
 -- difference between the file and some revision
