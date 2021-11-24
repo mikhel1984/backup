@@ -354,7 +354,9 @@ command.pop = function (a)
   if #tbl == 0 then
     os.remove(fname)
   else
-    io.open(fname, 'w'):write(table.concat(tbl, '\n'))
+    local f = io.open(fname, 'w')
+    f:write(table.concat(tbl, '\n')); f:write('\n')
+    f:close()
   end
   print("Remove", strsub(line, 9))
 end
@@ -391,18 +393,18 @@ local individual = {
 }
 
 -- mapping 'file > path'
-local function updateFiles()
-  if FILES then
+local function update(files,dir)
+  if files then
     local sep = strsub(package.config, 1, 1)  -- system-dependent separator
-    local dir = DIR and DIR..sep or ""
+    dir = DIR and DIR..sep or ""
     local name = {}
     -- single files
-    for _,v in ipairs(FILES) do
+    for _,v in ipairs(files) do
       name[v] = true
       filemap[v] = dir..v
     end
     -- explicit definitions
-    for k,v in pairs(FILES) do
+    for k,v in pairs(files) do
       if not name[v] then
         filemap[k] = dir..v
       end
@@ -412,7 +414,7 @@ end
 
 -- execute operation
 backup = function ()
-  updateFiles()
+  update(FILES, DIR)
   if individual[ arg[1] ] then
     -- not "defined"
     print(strformat("Choose file for '%s':\n", arg[1]))
