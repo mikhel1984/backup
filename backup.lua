@@ -140,35 +140,32 @@ local function bkpname(fname,br)
   return fname..(br and ('.'..br) or '')..EXT
 end
 
--- store arguments here
-local arglist = arg
-
 -- parse command line arguments
 local argparse = {}
 
 -- add msg branch | add msg | add
-argparse.add = function ()
-  return bkpname(arglist[1],arglist[4]), arglist[3], arglist[4]
+argparse.add = function (a)
+  return bkpname(a[1],a[4]), a[3], a[4]
 end
 
 -- log branch | log
-argparse.log = function ()
-  return bkpname(arglist[1],arglist[3]), nil, arglist[3]
+argparse.log = function (a)
+  return bkpname(a[1],a[3]), nil, a[3]
 end
 
 -- summ branch | summ
 argparse.summ = argparse.log
 
 -- rev n branch | rev n | rev branch | rev
-argparse.rev = function ()
-  local n = tonumber(arglist[3]) 
-  if arg[4] then 
-    return bkpname(arglist[1],arglist[4]), n, arglist[4]
+argparse.rev = function (a)
+  local n = tonumber(a[3]) 
+  if a[4] then 
+    return bkpname(a[1],a[4]), n, a[4]
   end
   if n then
-    return bkpname(arglist[1],nil), n, nil
+    return bkpname(a[1],nil), n, nil
   else
-    return bkpname(arglist[1],arglist[3]), nil, arglist[3]
+    return bkpname(a[1],a[3]), nil, a[3]
   end
 end
 
@@ -176,16 +173,16 @@ end
 argparse.diff = argparse.rev
 
 -- base n branch | base n
-argparse.base = function()
-  return bkpname(arglist[1],arglist[4]), tonumber(arglist[3]), arglist[4]
+argparse.base = function(a)
+  return bkpname(a[1],a[4]), tonumber(a[3]), a[4]
 end
 
 -- pop branch | pop
 argparse.pop = argparse.log
 
 -- return backup name, parameter, branch
-argparse._get_ = function ()
-  return argparse[arglist[2]]()
+argparse._get_ = function (a)
+  return argparse[ a[2] ](a)
 end
 
 -- available commands
@@ -206,8 +203,8 @@ command._commits_ = function (fname)
 end
 
 -- show commits
-command.log = function ()
-  local fname = argparse._get_()
+command.log = function (a)
+  local fname = argparse._get_(a)
   for _, v in ipairs(command._commits_(fname)) do
     print(strsub(v, 9))
   end
@@ -259,10 +256,10 @@ command._make_ = function (fname, last)
 end
 
 -- "commit"
-command.add = function ()
-  local fname, msg, br = argparse._get_()
+command.add = function (a)
+  local fname, msg, br = argparse._get_(a)
   local saved, id = command._make_(fname) 
-  local new = diff.read(arglist[1])
+  local new = diff.read(a[1])
   local common = diff.lcs(saved, new) 
   if #saved == #new and #new == #common-1 then return end
   -- save commit
@@ -291,37 +288,37 @@ command.add = function ()
 end
 
 -- restore the desired file version
-command.rev = function ()
-  local fname, ver = argparse._get_()
+command.rev = function (a)
+  local fname, ver = argparse._get_(a)
   local saved, id, msg = command._make_(fname, ver) 
   if id == 0 then return print("No commits") end
   -- save result
-  io.open(arglist[1], "w"):write(table.concat(saved, '\n'))
+  io.open(a[1], "w"):write(table.concat(saved, '\n'))
   print(strformat("Revision %s", msg))
 end
 
 -- difference between the file and some revision
-command.diff = function ()
-  local fname, ver = argparse._get_()
+command.diff = function (a)
+  local fname, ver = argparse._get_(a)
   local saved, id, msg = command._make_(fname, ver) 
   if id == 0 then return print("No commits", ver) end
   -- compare
   print(strformat("Revision %s", msg))
-  diff.print(saved, diff.read(arglist[1]))
+  diff.print(saved, diff.read(a[1]))
 end
 
 -- comare two files 
-command.vs = function ()
-  local fname1, fname2 = arglist[1], arglist[3]
+command.vs = function (a)
+  local fname1, fname2 = a[1], a[3]
   if not fname2 then return command.wtf('?!') end
   diff.print(diff.read(fname1), diff.read(fname2))
 end
 
 -- update initial version
-command.base = function ()
-  local fname,ver = argparse._get_() 
+command.base = function (a)
+  local fname,ver = argparse._get_(a) 
   local tbl = diff.read(fname) 
-  local ind, comment = 0, '^BKP NEW '..(arglist[3] or 'None')
+  local ind, comment = 0, '^BKP NEW '..(a[3] or 'None')
   for i = 1,#tbl do 
     if strfind(tbl[i],comment) then 
       io.write('Delete before "'..strsub(tbl[i],9)..'"\nContinue (y/n)? ')
@@ -331,7 +328,7 @@ command.base = function ()
   end
   if ind == 0 then return end
   -- save previous changes
-  local f = io.open(fname:gsub(EXT..'$',".v"..arglist[3]..EXT),"w")
+  local f = io.open(fname:gsub(EXT..'$',".v"..a[3]..EXT),"w")
   for i = 1,ind-1 do f:write(tbl[i],'\n') end
   f:close() 
   -- save current version
@@ -347,8 +344,8 @@ command.base = function ()
 end
 
 -- remove last revision
-command.pop = function ()
-  local fname = argparse._get_()
+command.pop = function (a)
+  local fname = argparse._get_(a)
   local tbl = diff.read(fname)
   local line
   repeat 
@@ -363,8 +360,8 @@ command.pop = function ()
 end
 
 -- short summary
-command.summ = function ()
-  local fname = argparse._get_()
+command.summ = function (a)
+  local fname = argparse._get_(a)
   local v = pcall(function() 
     local len, last, total = 0, "", 0
     for line in io.lines(fname) do
@@ -422,16 +419,15 @@ backup = function ()
     for src in pairs(filemap) do print(src) end
   elseif argparse[ arg[1] ] then 
      -- valid group command
-    arglist = {0, arg[1], arg[2], arg[3]}
+    local a = {0, arg[1], arg[2], arg[3]}
     for src in pairs(filemap) do
-      arglist[1] = src
+      a[1] = src
       print(strformat("\t%s:", src))
-      command[ arglist[2] ]()
+      command[ a[2] ](a)
     end
   else
     -- process command for single file
-    arglist = arg
-    command[ arglist[2] ]()
+    command[ arg[2] ](arg)
   end
 end
 
