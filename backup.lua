@@ -19,9 +19,10 @@ USAGE: %s [file] cmd [option] [branch]
     diff [n]   [br] - comapre file with n-th revision
     log        [br] - show all commits
     vs   file2      - compare two files
-    base n     [br] - update initial commit
+    base  n    [br] - update initial commit
     pop        [br] - remove last commit
     summ       [br] - short summary
+    rm         [br] - remove file history
 
 ]]
 
@@ -180,6 +181,9 @@ end
 -- pop branch | pop
 argparse.pop = argparse.log
 
+-- rm branch | rm
+argparse.rm = argparse.log
+
 -- return backup name, parameter, branch
 argparse._get_ = function (a)
   return argparse[ a[2] ](a)
@@ -294,7 +298,7 @@ command.rev = function (a)
   if id == 0 then return print("No commits") end
   -- save result
   io.open(a[1], "w"):write(table.concat(saved, '\n'))
-  print(strformat("Revision %s", msg))
+  io.write("Revision ", msg, "\n")
 end
 
 -- difference between the file and some revision
@@ -303,7 +307,7 @@ command.diff = function (a)
   local saved, id, msg = command._make_(fname, ver) 
   if id == 0 then return print("No commits", ver) end
   -- compare
-  print(strformat("Revision %s", msg))
+  io.write("Revision ", msg, "\n")
   diff.print(saved, diff.read(a[1]))
 end
 
@@ -321,7 +325,7 @@ command.base = function (a)
   local ind, comment = 0, '^BKP NEW '..(a[3] or 'None')
   for i = 1,#tbl do 
     if strfind(tbl[i],comment) then 
-      io.write('Delete before "'..strsub(tbl[i],9)..'"\nContinue (y/n)? ')
+      io.write('Delete before "', strsub(tbl[i],9), '"\nContinue (y/n)? ')
       if 'y' == io.read() then ind = i end
       break
     end
@@ -359,6 +363,14 @@ command.pop = function (a)
     f:close()
   end
   print("Remove", strsub(line, 9))
+end
+
+-- remove file history
+command.rm = function (a)
+  local fname = argparse._get_(a)
+  if os.remove(fname) then
+    print("Remove", fname)
+  end
 end
 
 -- short summary

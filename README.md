@@ -25,6 +25,7 @@ Commands and options:
 - **base** _(n)_ _(branch)_ - update initial commit
 - **pop** _(branch)_ - remove last commit
 - **summ** _(branch)_ - short summary
+- **rm** _(branch)_ - remove file history
 
 Default value for _n_ is the last revision, negative values can be used for backward search, default _branch_ or _msg_ name is empty string.
 
