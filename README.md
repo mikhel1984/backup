@@ -19,12 +19,13 @@ Make it executable for convenience. If the file name, for example, is _vc.lua_, 
 Commands and options: 
 - **add** _(msg)_ _(branch)_ - save last changes in file
 - **rev** _(n)_ _(branch)_ - switch to the n-th revision of the file
+- **remv** _(msg)_ _(branch)_ - switch to revision with the given comment message
 - **diff** _(n)_ _(branch)_ - compare current state with the n-th revision
 - **log** _(branch)_ - show all commits
+- **summ** _(branch)_ - short summary
 - **vs** _file2_ - compare with other file 
 - **base** _(n)_ _(branch)_ - update initial commit
 - **pop** _(branch)_ - remove last commit
-- **summ** _(branch)_ - short summary
 - **rm** _(branch)_ - remove file history
 
 Default value for _n_ is the last revision, negative values can be used for backward search, default _branch_ or _msg_ name is empty string.

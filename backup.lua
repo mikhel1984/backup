@@ -15,13 +15,14 @@ USAGE: %s [file] cmd [option] [branch]
 
   Commands:
     add  [msg] [br] - save changes in file
-    rev  [n]   [br] - create n-th revision of the file
+    rev  [n]   [br] - switch to the n-th revision 
+    revm [msg] [br] - switch to revision with comment message
     diff [n]   [br] - comapre file with n-th revision
     log        [br] - show all commits
+    summ       [br] - short summary
     vs   file2      - compare two files
     base  n    [br] - update initial commit
     pop        [br] - remove last commit
-    summ       [br] - short summary
     rm         [br] - remove file history
 
 ]]
@@ -170,6 +171,11 @@ argparse.rev = function (a)
   end
 end
 
+-- revm msg branch | revm msg | revm
+argparse.revm = function (a)
+  return bkpname(a[1],a[4]), a[3], a[4]
+end
+
 -- diff n branch | diff n | diff branch | diff
 argparse.diff = argparse.rev
 
@@ -297,6 +303,24 @@ command.rev = function (a)
   local saved, id, msg = command._make_(fname, ver) 
   if id == 0 then return print("No commits") end
   -- save result
+  io.open(a[1], "w"):write(table.concat(saved, '\n'))
+  io.write("Revision ", msg, "\n")
+end
+
+-- restore using comment message
+command.revm = function (a)
+  local fname, msg = argparse._get_(a)
+  local tbl = command._commits_(fname)
+  local ver = ""
+  -- find the last message
+  for i = #tbl, 1, -1 do
+    if strfind(tbl[i], msg) then
+      ver = strmatch(tbl[i], "^BKP NEW (%d+) : .*")
+      break
+    end
+  end
+  -- save result
+  local saved, _, msg = command._make_(fname, tonumber(ver))
   io.open(a[1], "w"):write(table.concat(saved, '\n'))
   io.write("Revision ", msg, "\n")
 end
