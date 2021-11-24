@@ -8,7 +8,6 @@ Put into your project directory a **Lua** file with the following minimal conten
 
 ```lua
 require "backup"
-
 backup()
 ```
 Make it executable for convenience. If the file name, for example, is _vc.lua_, then the program can be called as follows
@@ -50,7 +49,7 @@ FILES = {
 }
 
 --    2nd version
-DIR = foo
+DIR = "foo"
 FILES = {
 ["file1"] = "file1",
 ["file2"] = "file2",
@@ -58,7 +57,7 @@ FILES = {
 }
 
 --    3rd version
-DIR = foo
+DIR = "foo"
 FILES = {
 "file1",
 "file2",
