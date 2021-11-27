@@ -110,6 +110,33 @@ diff.print = function (a, b)
   end
 end
 
+-- transform a to b, save result to file
+diff.merge = function (f, a, b, msg)
+  local common = diff.lcs(a, b)
+  local p1, p2 = table.unpack(common[0])
+  local conflicts = false
+  for n = 1, #common do
+    local c1, c2 = table.unpack(common[n])
+    if c2-1 > p2 then 
+      if c1-1 > p1 then
+        -- have to resolve conflict
+        conflicts = true
+        f:write("<<<<<<<<<<\n")
+        for i = p1+1, c1-1 do f:write(a[i], '\n') end -- old
+        f:write("==========\n")
+        for i = p2+1, c2-1 do f:write(b[i], '\n') end -- new
+        f:write(">>>>>>>>>> ", msg or '', '\n')
+      else 
+        -- simple add new lines
+        for i = p2+1, c2-1 do f:write(b[i], '\n') end
+      end
+    end
+    if c2 <= #b then f:write(b[c2],'\n') end
+    p1, p2 = c1, c2
+  end
+  print(conflicts and "Reslove conflicts!" or "No conflicts")
+end
+
 -- make single-linked list
 local function addString (s, parent)
   parent.child = {s, child=parent.child}
