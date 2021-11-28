@@ -20,6 +20,7 @@ USAGE: %s [file] cmd [option] [branch]
     diff [n]   [br] - comapre file with n-th revision
     log        [br] - show all commits
     summ       [br] - short summary
+    merge       br  - merge the branch 
     vs   file2      - compare two files
     base  n    [br] - update initial commit
     pop        [br] - remove last commit
@@ -206,8 +207,18 @@ end
 -- diff n branch | diff n | diff branch | diff
 argparse.diff = argparse.rev
 
+-- vs file
+argparse.vs = function (a)
+  return a[1], a[3], nil
+end
+
+-- merge branch
+argparse.merge = function (a)
+  return a[1], bkpname(a[1],a[3]), a[3]
+end
+
 -- base n branch | base n
-argparse.base = function(a)
+argparse.base = function (a)
   return bkpname(a[1],a[4]), tonumber(a[3]), a[4]
 end
 
@@ -364,9 +375,22 @@ end
 
 -- comare two files 
 command.vs = function (a)
-  local fname1, fname2 = a[1], a[3]
+  local fname1, fname2 = argparse._get_(a)
   if not fname2 then return command.wtf('?!') end
   diff.print(diff.read(fname1), diff.read(fname2))
+end
+
+-- "merge" the branch
+command.merge = function (a)
+  local main, brname, branch = argparse._get_(a)
+  if not branch then return command.wtf('?!') end
+  pcall(function ()
+    local tm = diff.read(main) 
+    local tb = command._make_(brname)
+    local f = io.open(main, 'w')
+    diff.merge(f, tm, tb, branch)
+    f:close()
+  end)
 end
 
 -- update initial version

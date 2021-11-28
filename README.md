@@ -23,6 +23,7 @@ Commands and options:
 - **diff** _(n)_ _(branch)_ - compare current state with the n-th revision
 - **log** _(branch)_ - show all commits
 - **summ** _(branch)_ - short summary
+- **merge** _branch_ - merge file from other branch, require to resolve conflicts save the result
 - **vs** _file2_ - compare with other file 
 - **base** _(n)_ _(branch)_ - update initial commit
 - **pop** _(branch)_ - remove last commit
