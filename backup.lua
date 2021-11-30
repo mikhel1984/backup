@@ -28,10 +28,10 @@ USAGE: %s [file] cmd [option] [branch]
 ]]
 
 -- functions
-local strfind   = string.find
-local strmatch  = string.match
-local strsub    = string.sub
-local strformat = string.format
+local sfind   = string.find
+local smatch  = string.match
+local ssub    = string.sub
+local sformat = string.format
 
 -- file comparison
 local diff = {}
@@ -55,14 +55,14 @@ diff.lcs = function (a, b)
     an, bn = an-1, bn-1
   end  
   -- make table
-  local S, ab1 = {}, ab-1
+  local S, ab1, mmax = {}, ab-1, math.max
   S[ab1] = setmetatable({}, {__index=function() return ab1 end}) 
   for i = ab, an do
     S[i] = {[ab1]=ab1}
     local Si,Si1, ai = S[i],S[i-1],a[i]
     for j = ab, bn do
       Si[j] = (ai==b[j]) and (Si1[j-1]+1) 
-                          or math.max(Si[j-1], Si1[j]) 
+                          or mmax(Si[j-1], Si1[j]) 
     end
   end
   local Ncom = S[an][bn]   -- total number of common strings  
@@ -97,7 +97,6 @@ end
 -- show difference
 diff.print = function (a, b)
   local common = diff.lcs(a, b)
-  --for i = 1,#common do print(common[i][1],a[common[i][1]]) end
   local tbl, sign = {a, b}, {"-- ", "++ "}
   for n = 1, #common do
     for k = 1,2 do
@@ -121,20 +120,20 @@ diff.merge = function (f, a, b, msg)
       if c1-1 > p1 then
         -- have to resolve conflict
         conflicts = true
-        f:write("<<<<<<<<<<\n")
+        f:write("<<<<<<<<\n")
         for i = p1+1, c1-1 do f:write(a[i], '\n') end -- old
-        f:write("==========\n")
+        f:write("========\n")
         for i = p2+1, c2-1 do f:write(b[i], '\n') end -- new
-        f:write(">>>>>>>>>> ", msg or '', '\n')
+        f:write(">>>>>>>> ", msg or '', '\n')
       else 
         -- simple add new lines
         for i = p2+1, c2-1 do f:write(b[i], '\n') end
       end
     end
-    if c2 <= #b then f:write(b[c2],'\n') end
+    if b[c2] then f:write(b[c2],'\n') end
     p1, p2 = c1, c2
   end
-  print(conflicts and "Reslove conflicts!" or "No conflicts")
+  print(conflicts and "Reslove the conflicts!" or "No conflicts")
 end
 
 -- make single-linked list
@@ -235,7 +234,7 @@ command._commits_ = function (fname)
   local ok, res = pcall(function ()
     local list = {}
     for line in io.lines(fname) do
-      if strfind(line, "^BKP NEW ") then
+      if sfind(line, "^BKP NEW ") then
         list[#list+1] = line
       end
     end
@@ -248,7 +247,7 @@ end
 command.log = function (a)
   local fname = argparse._get_(a)
   for _, v in ipairs(command._commits_(fname)) do
-    print(strsub(v, 9))
+    print(ssub(v, 9))
   end
 end
 
@@ -258,7 +257,7 @@ command._make_ = function (fname, last)
   if last and last <= 0 then
       -- search in backward direction
       local tmp = command._commits_(fname)
-      local v = strmatch(tmp[#tmp + last] or "", "^BKP NEW (%d+) : .*")
+      local v = smatch(tmp[#tmp + last] or "", "^BKP NEW (%d+) : .*")
       last = tonumber(v)  -- get last commit if out of range
   end
   local f = io.open(fname, 'r') 
@@ -267,16 +266,16 @@ command._make_ = function (fname, last)
   local begin, rev = {}
   local curr, index, id, del = nil, 0, 0, true
   for line in f:lines() do
-    if #line > 8 and strfind(line, "^BKP ") then 
+    if #line > 8 and sfind(line, "^BKP ") then 
       -- execute command
-      local cmd, v1, v2 = strmatch(line, "^BKP (%u%u%u) (%d+) : (.*)")
+      local cmd, v1, v2 = smatch(line, "^BKP (%u%u%u) (%d+) : (.*)")
       v1 = tonumber(v1)
       if cmd == "NEW" then                            -- commit
         if v1-1 == last then break 
         else 
           curr, index, id, del = begin, 0, v1, true   -- reset all
         end
-        rev = strsub(line, 9)
+        rev = ssub(line, 9)
       elseif cmd == "ADD" then                        -- insert lines
         if del then
           curr, index, del = begin, 0, false          -- reset, change flag
@@ -306,13 +305,13 @@ command.add = function (a)
   if #saved == #new and #new == #common-1 then return end
   -- save commit
   local f = io.open(fname, "a")
-  f:write(strformat("BKP NEW %d : %s\n", id+1, msg or ''))
+  f:write(sformat("BKP NEW %d : %s\n", id+1, msg or ''))
   -- remove old lines
   if #saved > #common-1 then
     for n = 1, #common do
       local n1, n2 = common[n-1][1]+1, common[n][1]
       if n2 > n1 then
-        f:write(strformat("BKP REM %d : %d\n", n1, n2-n1))
+        f:write(sformat("BKP REM %d : %d\n", n1, n2-n1))
       end
     end
   end
@@ -321,12 +320,12 @@ command.add = function (a)
     for n = 1, #common do
       local n1, n2 = common[n-1][2]+1, common[n][2]
       if n2 > n1 then
-        f:write(strformat("BKP ADD %d : %d\n", n1, n2-n1))
+        f:write(sformat("BKP ADD %d : %d\n", n1, n2-n1))
         for i = n1, n2-1 do f:write(new[i],'\n') end
       end
     end
   end
-  print(strformat("Save [%s%d] %s", (br and br..' ' or ''), id+1, msg or ''))
+  print(sformat("Save [%s%d] %s", (br and br..' ' or ''), id+1, msg or ''))
 end
 
 -- restore the desired file version
@@ -346,8 +345,8 @@ command.revm = function (a)
   local ver = ""
   -- find the last message
   for i = #tbl, 1, -1 do
-    if strfind(tbl[i], msg) then
-      ver = strmatch(tbl[i], "^BKP NEW (%d+) : .*")
+    if sfind(tbl[i], msg) then
+      ver = smatch(tbl[i], "^BKP NEW (%d+) : .*")
       break
     end
   end
@@ -386,8 +385,8 @@ command.base = function (a)
   local tbl = diff.read(fname) 
   local ind, comment = 0, '^BKP NEW '..(a[3] or 'None')
   for i = 1,#tbl do 
-    if strfind(tbl[i],comment) then 
-      io.write('Delete before "', strsub(tbl[i],9), '"\nContinue (y/n)? ')
+    if sfind(tbl[i],comment) then 
+      io.write('Delete before "', ssub(tbl[i],9), '"\nContinue (y/n)? ')
       if 'y' == io.read() then ind = i end
       break
     end
@@ -400,11 +399,11 @@ command.base = function (a)
   -- save current version
   local saved,id = command._make_(fname,ver)
   f = io.open(fname,'w') 
-  f:write(strformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
+  f:write(sformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n",ver,#saved))
   for i = 1,#saved do f:write(saved[i],'\n') end
   -- start from the next commit
   ind = ind+1
-  while ind <= #tbl and not strfind(tbl[ind],"^BKP NEW ") do ind = ind+1 end 
+  while ind <= #tbl and not sfind(tbl[ind],"^BKP NEW ") do ind = ind+1 end 
   for j = ind,#tbl do f:write(tbl[j],'\n') end 
   f:close()
 end
@@ -416,7 +415,7 @@ command.pop = function (a)
   local line
   repeat 
     line = table.remove(tbl)
-  until strfind(line, "^BKP NEW ")
+  until sfind(line, "^BKP NEW ")
   if #tbl == 0 then
     os.remove(fname)
   else
@@ -424,7 +423,7 @@ command.pop = function (a)
     f:write(table.concat(tbl, '\n')); f:write('\n')
     f:close()
   end
-  print("Remove", strsub(line, 9))
+  print("Remove", ssub(line, 9))
 end
 
 -- remove file history
@@ -442,19 +441,19 @@ command.summ = function (a)
     local len, last, total = 0, "", 0
     for line in io.lines(fname) do
       len = len + #line 
-      if strfind(line, "^BKP NEW ") then
+      if sfind(line, "^BKP NEW ") then
         total = total + 1
-        last = strsub(line, 9)
+        last = ssub(line, 9)
       end
     end
-    print(strformat("size: %.1f kB | commits: %d | last: %s", (len / 1024), total, last))
+    print(sformat("size: %.1f kB | commits: %d | last: %s", (len / 1024), total, last))
   end)
   if not v then print("commits: 0") end 
 end
 
 -- call unexpected argument
 setmetatable(command, {__index=function() 
-  print(strformat(usage, arg[0])) 
+  print(sformat(usage, arg[0])) 
   return function() end
 end})
 
@@ -468,7 +467,7 @@ local individual = {
 -- mapping 'file > path'
 local function update(files,dir)
   if files then
-    local sep = strsub(package.config, 1, 1)  -- system-dependent separator
+    local sep = ssub(package.config, 1, 1)  -- system-dependent separator
     dir = DIR and DIR..sep or ""
     local name = {}
     -- single files
@@ -490,14 +489,14 @@ backup = function ()
   update(FILES, DIR)
   if individual[ arg[1] ] then
     -- not "defined"
-    print(strformat("Choose file for '%s':\n", arg[1]))
+    print(sformat("Choose file for '%s':\n", arg[1]))
     for src in pairs(filemap) do print(src) end
   elseif argparse[ arg[1] ] then 
      -- valid group command
     local a = {0, arg[1], arg[2], arg[3]}
     for src in pairs(filemap) do
       a[1] = src
-      print(strformat("\t%s:", src))
+      print(sformat("\t%s:", src))
       command[ a[2] ](a)
     end
   else
