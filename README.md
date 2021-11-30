@@ -23,11 +23,10 @@ Commands and options:
 - **diff** _(n)_ _(branch)_ - compare current state with the n-th revision
 - **log** _(branch)_ - show all commits
 - **summ** _(branch)_ - short summary
-- **merge** _branch_ - merge file from other branch, require to resolve conflicts save the result
-- **vs** _file2_ - compare with other file 
+- **merge** _branch_ - merge file from other branch, require to resolve conflicts and save the result
 - **base** _(n)_ _(branch)_ - update initial commit
 - **pop** _(branch)_ - remove last commit
-- **rm** _(branch)_ - remove file history
+- **rm** _(branch)_ - clear file history
 
 Default value for _n_ is the last revision, negative values can be used for backward search, default _branch_ or _msg_ name is empty string.
 
