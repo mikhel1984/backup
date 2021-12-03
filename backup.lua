@@ -465,7 +465,7 @@ local individual = {
 }
 
 -- mapping 'file > path'
-local function update(files,dir)
+local function updateFilemap(files,dir)
   if files then
     local sep = ssub(package.config, 1, 1)  -- system-dependent separator
     dir = DIR and DIR..sep or ""
@@ -484,24 +484,25 @@ local function update(files,dir)
   end
 end
 
--- execute operation
-backup = function ()
-  update(FILES, DIR)
-  if individual[ arg[1] ] then
+-- execute command
+backup = function (a)
+  a = a or arg
+  updateFilemap(FILES, DIR)
+  if individual[ a[1] ] then
     -- not "defined"
-    print(sformat("Choose file for '%s':\n", arg[1]))
+    print(sformat("Choose file for '%s':\n", a[1]))
     for src in pairs(filemap) do print(src) end
-  elseif argparse[ arg[1] ] then 
+  elseif argparse[ a[1] ] then 
      -- valid group command
-    local a = {0, arg[1], arg[2], arg[3]}
+    local aa = {0, a[1], a[2], a[3]}
     for src in pairs(filemap) do
-      a[1] = src
+      aa[1] = src
       print(sformat("\t%s:", src))
-      command[ a[2] ](a)
+      command[ aa[2] ](aa)
     end
   else
     -- process command for single file
-    command[ arg[2] ](arg)
+    command[ a[2] ](a)
   end
 end
 
