@@ -196,15 +196,11 @@ argparse.summ = argparse.log
 argparse.rev = function (a)
   local n = tonumber(a[3]) 
   local br = a[4] or BRANCH
-  if br and n then 
+  if br or n then 
     return bkpname(a[1],br), n, br
   end
   br = a[3] or BRANCH
-  if n then
-    return bkpname(a[1],br), n, br
-  else
-    return bkpname(a[1],br), nil, br
-  end
+  return bkpname(a[1],br), nil, br
 end
 
 -- revm msg branch | revm msg | revm
@@ -238,6 +234,8 @@ argparse.rm = argparse.log
 argparse._get_ = function (a)
   return argparse[ a[2] ](a)
 end
+
+local onlyChanged = true
 
 -- available commands
 local command = {}
@@ -315,7 +313,7 @@ command.add = function (a)
   local saved, id = command._make_(fname) 
   local new = diff.read(a[1])
   local common = diff.lcs(saved, new) 
-  if #saved == #new and #new == #common-1 then return end
+  if onlyChanged and #saved == #new and #new == #common-1 then return end
   -- save commit
   local f = io.open(fname, "a")
   f:write(sformat("BKP NEW %d : %s\n", id+1, msg or ''))
@@ -508,8 +506,9 @@ backup = function (a)
     print(sformat("Choose file for '%s':\n", a[1]))
     for src in pairs(filemap) do print(src) end
   elseif argparse[ a[1] ] then 
-     -- valid group command
+    -- valid group command
     local aa = {0, a[1], a[2], a[3]}
+    onlyChanged = false    -- add all files
     for src in pairs(filemap) do
       aa[1] = src
       print(sformat("\t%s:", src))
