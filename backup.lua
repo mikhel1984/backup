@@ -24,7 +24,6 @@ USAGE: %s [file] cmd [option] [branch]
     base  n    [br] - update initial commit
     pop        [br] - remove last commit
     rm         [br] - clear file history
-
 ]]
 
 -- functions
@@ -330,17 +329,18 @@ end
 
 -- restore the desired file version
 command.rev = function (a)
-  local fname, ver = argparse._get_(a)
+  local fname, ver, br = argparse._get_(a)
   local saved, id, msg = command._make_(fname, ver) 
   if id == 0 then return print("No commits") end
   -- save result
   io.open(a[1], "w"):write(table.concat(saved, '\n'))
-  io.write("Revision ", msg, "\n")
+  br = br and sformat('[%s] ', br) or ''
+  io.write("Revision ", br,  msg, "\n")
 end
 
 -- restore using comment message
 command.revm = function (a)
-  local fname, msg = argparse._get_(a)
+  local fname, msg, br = argparse._get_(a)
   local tbl = command._commits_(fname)
   local ver = ""
   -- find the last message
@@ -353,7 +353,8 @@ command.revm = function (a)
   -- save result
   local saved, _, msg = command._make_(fname, tonumber(ver))
   io.open(a[1], "w"):write(table.concat(saved, '\n'))
-  io.write("Revision ", msg, "\n")
+  br = br and sformat('[%s] ', br) or ''
+  io.write("Revision ", br, msg, "\n")
 end
 
 -- difference between the file and some revision

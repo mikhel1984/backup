@@ -1,5 +1,7 @@
 # Try commands
 
+Execute _vc.lua_ without arguments to see usage.
+
 See changes
 ```
 ./vc.lua 1.txt log
@@ -16,4 +18,4 @@ Switch revision
 ./vc.lua rev "new"
 ```
 
-You can also save changes (**add**), remove last commit (**pop**), merge branch (**merge**), begin revision history from any saved versions (**base**), clear changes (**rm**).
+You can also save the changes (**add**), remove last commit (**pop**), merge a branch (**merge**), begin revision history from any saved versions (**base**), clear changes (**rm**).
