@@ -408,7 +408,7 @@ command.base = function (a)
   end
   if ind == 0 then return end
   -- save previous changes
-  local f = io.open(fname:gsub(EXT..'$',".v"..a[3]..EXT),"w")
+  local f = io.open(fname:gsub(EXT..'$', sformat("v%s.%s",a[3],EXT)), "w")
   for i = 1,ind-1 do f:write(tbl[i],'\n') end
   f:close() 
   -- save current version
