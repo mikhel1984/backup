@@ -171,7 +171,6 @@ local filemap = {}
 local function bkpname(fname,br)
   local map = filemap[fname]
   fname = map and map or fname
-  br = br or BRANCH
   return sformat("%s%s.%s", fname, br and ('.'..br) or '', EXT)
 end
 
@@ -180,12 +179,14 @@ local argparse = {}
 
 -- add msg branch | add msg | add
 argparse.add = function (a)
-  return bkpname(a[1],a[4]), a[3], a[4]
+  local br = a[4] or BRANCH
+  return bkpname(a[1],br), a[3], br
 end
 
 -- log branch | log
 argparse.log = function (a)
-  return bkpname(a[1],a[3]), nil, a[3]
+  local br = a[3] or BRANCH
+  return bkpname(a[1],br), nil, br
 end
 
 -- summ branch | summ
@@ -194,19 +195,22 @@ argparse.summ = argparse.log
 -- rev n branch | rev n | rev branch | rev
 argparse.rev = function (a)
   local n = tonumber(a[3]) 
-  if a[4] then 
-    return bkpname(a[1],a[4]), n, a[4]
+  local br = a[4] or BRANCH
+  if br and n then 
+    return bkpname(a[1],br), n, br
   end
+  br = a[3] or BRANCH
   if n then
-    return bkpname(a[1],nil), n, nil
+    return bkpname(a[1],br), n, br
   else
-    return bkpname(a[1],a[3]), nil, a[3]
+    return bkpname(a[1],br), nil, br
   end
 end
 
 -- revm msg branch | revm msg | revm
 argparse.revm = function (a)
-  return bkpname(a[1],a[4]), a[3], a[4]
+  local br = a[4] or BRANCH
+  return bkpname(a[1],br), a[3], br
 end
 
 -- diff n branch | diff n | diff branch | diff
@@ -214,12 +218,14 @@ argparse.diff = argparse.rev
 
 -- merge branch
 argparse.merge = function (a)
-  return a[1], bkpname(a[1],a[3]), a[3]
+  local br = a[3] or BRANCH
+  return a[1], bkpname(a[1],br), br
 end
 
 -- base n branch | base n
 argparse.base = function (a)
-  return bkpname(a[1],a[4]), tonumber(a[3]), a[4]
+  local br = a[4] or BRANCH 
+  return bkpname(a[1],br), tonumber(a[3]), br
 end
 
 -- pop branch | pop
