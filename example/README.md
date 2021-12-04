@@ -18,4 +18,4 @@ Switch revision
 ./vc.lua rev "new"
 ```
 
-You can also save the changes (**add**), remove last commit (**pop**), merge a branch (**merge**), begin revision history from any saved versions (**base**), clear changes (**rm**).
+You can also save your changes (**add**), remove last commit (**pop**), merge a branch (**merge**), begin revision history from any saved versions (**base**), clear changes (**rm**).

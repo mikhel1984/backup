@@ -6,8 +6,15 @@ See "usage" for details.
 
 2020-2021, Stanislav Mikhel ]]
 
+-- GLOBAL VARIABLES
 -- output extention
-EXT = ".bkp"      
+EXT = "bkp"      
+-- default branch
+BRANCH = nil
+-- backup directory
+DIR = nil
+-- file list
+FILES = nil
 
 -- help
 local usage = [[
@@ -164,7 +171,8 @@ local filemap = {}
 local function bkpname(fname,br)
   local map = filemap[fname]
   fname = map and map or fname
-  return fname..(br and ('.'..br) or '')..EXT
+  br = br or BRANCH
+  return sformat("%s%s.%s", fname, br and ('.'..br) or '', EXT)
 end
 
 -- parse command line arguments

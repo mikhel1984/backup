@@ -2,7 +2,10 @@
 require "backup"
 
 -- file extention
--- EXT = ".bkp"
+-- EXT = "bkp"
+-- branch name
+-- BRANCH = "master"
+
 -- save to directory
 DIR = "foo"
 -- file list
