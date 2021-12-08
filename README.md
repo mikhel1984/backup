@@ -32,8 +32,9 @@ Default value for _n_ is the last revision, negative values can be used for back
 
 ## File group
 
-If the project conatains more than one file, it is useful to create talbe _FILES_ with the file list In this case the command option _file_ can be skipped. Variable _EXT_ can be used to change the backup file extention.
-In other to store all the backups into the same single directory, set its name into the _DIR_ variable (the directory must exist). If _DIR_ is defined, each files in subdirectories must be matched with short names using key-value notation.
+If the project conatains more than one file, it is useful to create talbe _FILES_ with the file list In this case the command option _file_ can be skipped. Variable _EXT_ can be used to change the backup file extention. If you want to define a default branch name, use _BRANCH_ variable.
+
+In other to store all the backups into the same single directory, set its name into the _DIR_ variable (the directory must exist). If _DIR_ is defined, each files in subdirectories must be matched with short names using key-value notation (otherwise, a file _a/b/c_ will be saved as _DIR/a/b/c_, i.e. the subdirectories _DIR/a/b_ have to be created).
 Only part of operations with the group of files is available, but manipulations with individual files still can be done. 
 
 ### Example 
