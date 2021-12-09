@@ -71,3 +71,7 @@ FILES["path/to/file3"] = "file3"
 
 backup()
 ```
+
+## Dependencies 
+
+The library works in **Lua** 5.1-5.4 without additional packages. 
