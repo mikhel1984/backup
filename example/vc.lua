@@ -1,10 +1,12 @@
 #!/usr/local/bin/lua
 require "backup"
 
--- file extention
+--   file extention
 -- EXT = "bkp"
--- branch name
+--   branch name
 -- BRANCH = "master"
+--   show removed lines in source
+-- MERGEREM = true
 
 -- save to directory
 DIR = "foo"

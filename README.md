@@ -30,14 +30,16 @@ Commands and options:
 
 Default value for _n_ is the last revision, negative values can be used for backward search, default _branch_ or _msg_ name is empty string.
 
-## File group
+## Configuration
 
-If the project conatains more than one file, it is useful to create talbe _FILES_ with the file list In this case the command option _file_ can be skipped. Variable _EXT_ can be used to change the backup file extention. If you want to define a default branch name, use _BRANCH_ variable.
+The following global varialbes can be defined in the **Lua** file for the program configuration.
+- _FILES_ - defines the group of files for processing. When the varialbe is defined then commands can be called without file name (i.e. _file_ option can be skipped). Some commands do not work with the group of files. Operations with individual files are still available.
+- _DIR_ - defines the name of the directory for storing backup files.  If it is defined, each file in subdirectories must be matched with short names using key-value notation (otherwise, a file _a/b/c_ will be saved as _DIR/a/b/c_, i.e. the subdirectories _DIR/a/b_ must exist).
+- _BRANCH_ - use it to define the default branch name, in this case the _branch_ option can be skipped from the command.
+- _MERGEREM_ - set it equal _true_ to add removed lines into the file to resolve the conflict. It is _false_ by default. 
+- _EXT_ - defines the backup file extention, _bkp_ by default.
 
-In other to store all the backups into the same single directory, set its name into the _DIR_ variable (the directory must exist). If _DIR_ is defined, each files in subdirectories must be matched with short names using key-value notation (otherwise, a file _a/b/c_ will be saved as _DIR/a/b/c_, i.e. the subdirectories _DIR/a/b_ have to be created).
-Only part of operations with the group of files is available, but manipulations with individual files still can be done. 
-
-### Example 
+## Example 
 
 Assume that we want to work with group of files and store _bkp_ in the _foo_ directory. The following three versions of configuratino file are equal. 
 ```lua
