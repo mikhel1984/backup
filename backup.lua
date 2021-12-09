@@ -7,14 +7,11 @@ See "usage" for details.
 2020-2021, Stanislav Mikhel ]]
 
 -- GLOBAL VARIABLES
--- output extention
-EXT = "bkp"      
--- default branch
-BRANCH = nil
--- backup directory
-DIR = nil
--- file list
-FILES = nil
+EXT = "bkp"      -- output extention
+BRANCH = nil     -- default branch
+DIR = nil        -- backup directory
+FILES = nil      -- file list
+MERGEREM = false -- show lines that have been removed
 
 -- help
 local usage = [[
@@ -119,6 +116,7 @@ end
 diff.merge = function (f, a, b, msg)
   local common = diff.lcs(a, b)
   local p1, p2 = table.unpack(common[0])
+  local _OLD_, _MID_, _NEW_ = '<<<<<<<<\n', '========\n', '>>>>>>>> '
   local conflicts = false
   for n = 1, #common do
     local c1, c2 = table.unpack(common[n])
@@ -126,20 +124,26 @@ diff.merge = function (f, a, b, msg)
       if c1-1 > p1 then
         -- have to resolve conflict
         conflicts = true
-        f:write("<<<<<<<<\n")
+        f:write(_OLD_)
         for i = p1+1, c1-1 do f:write(a[i], '\n') end -- old
-        f:write("========\n")
+        f:write(_MID_)
         for i = p2+1, c2-1 do f:write(b[i], '\n') end -- new
-        f:write(">>>>>>>> ", msg or '', '\n')
+        f:write(_NEW_, msg or '', '\n')
       else 
         -- simple add new lines
         for i = p2+1, c2-1 do f:write(b[i], '\n') end
       end
+    elseif c1-1 > p1 and MERGEREM then
+      -- removed lines
+      f:write(_OLD_)
+      for i = p1+1, c1-1 do f:write(a[i], '\n') end -- old
+      f:write(_MID_)
+      f:write(_NEW_, msg or '', '\n')
     end
     if b[c2] then f:write(b[c2],'\n') end
     p1, p2 = c1, c2
   end
-  print(conflicts and "Reslove the conflicts!" or "No conflicts")
+  if conflicts then print("Reslove the conflicts!") end
 end
 
 -- make single-linked list
