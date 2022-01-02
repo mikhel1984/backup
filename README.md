@@ -36,7 +36,7 @@ The following global varialbes can be defined in the **Lua** file for the progra
 - _FILES_ - defines the group of files for processing. When the varialbe is defined then commands can be called without file name (i.e. _file_ option can be skipped). Some commands do not work with the group of files. Operations with individual files are still available.
 - _DIR_ - defines the name of the directory for storing backup files.  If it is defined, each file in subdirectories must be matched with short names using key-value notation (otherwise, a file _a/b/c_ will be saved as _DIR/a/b/c_, i.e. the subdirectories _DIR/a/b_ must exist).
 - _BRANCH_ - use it to define the default branch name, in this case the _branch_ option can be skipped from the command.
-- _MERGEREM_ - set it equal _true_ to add removed lines into the file to resolve the conflict. It is _false_ by default. 
+- _MERGEREM_ - set _true_ to add removed lines into the file to resolve the conflict. It is _false_ by default. 
 - _EXT_ - defines the backup file extention, _bkp_ by default.
 - _COLOR_ - use ANSI escape codes to highlight messages.
 
