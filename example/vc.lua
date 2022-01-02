@@ -7,6 +7,8 @@ require "backup"
 -- BRANCH = "master"
 --   show removed lines in source
 -- MERGEREM = true
+--   highlight messages
+-- COLOR = true
 
 -- save to directory
 DIR = "foo"

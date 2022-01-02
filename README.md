@@ -38,6 +38,7 @@ The following global varialbes can be defined in the **Lua** file for the progra
 - _BRANCH_ - use it to define the default branch name, in this case the _branch_ option can be skipped from the command.
 - _MERGEREM_ - set it equal _true_ to add removed lines into the file to resolve the conflict. It is _false_ by default. 
 - _EXT_ - defines the backup file extention, _bkp_ by default.
+- _COLOR_ - use ANSI escape codes to highlight messages.
 
 ## Example 
 

@@ -12,6 +12,7 @@ BRANCH = nil     -- default branch
 DIR = nil        -- backup directory
 FILES = nil      -- file list
 MERGEREM = false -- show lines that have been removed
+COLOR = nil      -- highlight text messages
 
 -- help
 local usage = [[
@@ -35,6 +36,26 @@ local sfind   = string.find
 local smatch  = string.match
 local ssub    = string.sub
 local sformat = string.format
+
+-- ansi color codes 
+local text = {
+  RED = '\x1b[31m',
+  GREEN = '\x1b[32m',
+  BOLD = '\x1b[1m',
+  END = '\x1b[0m',
+}
+
+-- show colored text
+text._show_ = function (clr, ...)
+  if(COLOR) then io.write(clr) end
+  io.write(...)
+  if(COLOR) then io.write(text.END) end
+end
+
+-- simplify call
+text.showRed   = function(...) return text._show_(text.RED, ...) end
+text.showGreen = function(...) return text._show_(text.GREEN, ...) end
+text.showBold  = function(...) return text._show_(text.BOLD, ...) end
 
 -- file comparison
 local diff = {}
@@ -100,13 +121,13 @@ end
 -- show difference
 diff.print = function (a, b)
   local common = diff.lcs(a, b)
-  local tbl, sign = {a, b}, {"-- ", "++ "}
+  local tbl, sign, clr = {a, b}, {"-- ", "++ "}, {text.showRed, text.showGreen}
   for n = 1, #common do
     for k = 1,2 do
       local n1, n2 = common[n-1][k]+1, common[n][k]-1
       if n2 >= n1 then
         io.write("@@ ", n1, "..", n2, "\n")
-        for i = n1, n2 do io.write(sign[k], tbl[k][i], "\n") end
+        for i = n1, n2 do clr[k](sign[k], tbl[k][i], "\n") end
       end
     end
   end
@@ -515,7 +536,7 @@ backup = function (a)
     onlyChanged = false    -- add all files
     for src in pairs(filemap) do
       aa[1] = src
-      print(sformat("\t%s:", src))
+      text.showBold(sformat("\t%s:", src),'\n')
       command[ aa[2] ](aa)
     end
   else
