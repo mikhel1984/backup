@@ -76,3 +76,15 @@ backup()
 ## Dependencies 
 
 The library works in **Lua** 5.1-5.4 without additional packages. 
+
+## Linux settings
+
+In other to simplify usage of the program, add following line to _.bashrc_:
+
+```
+export LUA_PATH="${LUA_PATH};;/path/to/backup.lua
+```
+Then generate template with the command
+```
+lua -e "require('backup').template('vc')" && chmod +x vc.lua
+```

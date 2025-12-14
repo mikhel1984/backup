@@ -540,6 +540,35 @@ local function updateFilemap(files,dir)
   end
 end
 
+local function template (fname)
+  local f = io.open((fname or 'vc')..'.lua', 'w')
+  f:write(
+[[#!/usr/local/bin/lua
+require "backup"
+
+--   file extention
+-- EXT = "bkp"
+--   branch name
+-- BRANCH = "master"
+--   show removed lines in source
+-- MERGEREM = true
+--   highlight messages
+-- COLOR = true
+--   save to directory
+-- DIR = "foo"
+--   file list
+FILES = {
+-- current directory, simple list
+-- "1.txt",
+-- other directories, require aliases
+-- ["bar/2.txt"] = "bar2.txt", 
+}
+
+backup()
+]])
+  f:close()  
+end
+
 -- execute command
 backup = function (a)
   a = a or arg
@@ -567,4 +596,5 @@ end
 return {
   diff=diff, 
   command=command,
+  template=template,
 }
