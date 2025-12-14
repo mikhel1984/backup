@@ -4,7 +4,7 @@ require "backup"
 --   file extention
 -- EXT = "bkp"
 --   branch name
--- BRANCH = "master"
+-- BRANCH = "main"
 --   show removed lines in source
 -- MERGEREM = true
 --   highlight messages
