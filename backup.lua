@@ -21,7 +21,7 @@ USAGE: %s [file] cmd [option] [branch]
   Commands:
     add  [msg] [br] - save changes in file
     rev  [n]   [br] - switch to the n-th revision 
-    revm [msg] [br] - switch to revision with comment message
+    revm [msg] [br] - switch to revision with comment message or date
     diff [n]   [br] - comapre file with n-th revision
     log        [br] - show all commits
     summ       [br] - short summary
