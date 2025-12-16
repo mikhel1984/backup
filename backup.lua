@@ -393,7 +393,7 @@ command.revm = function (a)
   local ver = ""
   -- find the last message
   for i = #tbl, 1, -1 do
-    if sfind(tbl[i], msg) then
+    if not msg or sfind(tbl[i], msg) then
       ver = smatch(tbl[i], "^BKP NEW (%d+) : .*")
       break
     end
