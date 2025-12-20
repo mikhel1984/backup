@@ -29,11 +29,14 @@ USAGE: %s [file] cmd [option] [branch]
     base  n    [br] - update initial commit
     pop        [br] - remove last commit
     rm         [br] - clear file history
+    pack [nm]  [br] - save files to archive
+    unpack          - extract files from archive
 ]]
 
 -- functions
 local sfind   = string.find
 local smatch  = string.match
+local sgmatch = string.gmatch
 local ssub    = string.sub
 local sformat = string.format
 
@@ -267,8 +270,8 @@ argparse.pop = argparse.log
 -- rm branch | rm
 argparse.rm = argparse.log
 
--- pack branch | back
-argparse.pack = argparse.log
+-- pack name branch | pack name | pack
+argparse.pack = argparse.revm
 
 -- unpack
 argparse.unpack = function (a)
@@ -523,18 +526,22 @@ command.summ = function (a)
   if not v then print("commits: 0") end 
 end
 
+-- combine and compress backup files
 command.pack = function (a)
   if _i_next == 0 then
+    -- init dictionary
     for i = 0, 255 do _dict[string.char(i)] = i end
     _i_next = 256
   end
   local fname = argparse._get_(a)
-  pcall(function ()
+  print('Read '..fname)
+  local ok, err = pcall(function ()
     local file = io.open(fname, 'r')
-    fname = DIR and ssub(fname, #DIR+2) or fname
-    local txt = sformat('%s\nBKP END %s\n', file:read('a'), fname)  -- file separator
-    print(txt)
-    for s in string.gmatch(txt, '.') do
+    fname = DIR and ssub(fname, #DIR+2) or fname  -- remove directory name
+    -- add file separator
+    local txt = sformat('%s\nBKP END %s\n', file:read('a'), fname)
+    -- pack
+    for s in sgmatch(txt, '.') do
       local w_s = _w..s
       if _dict[w_s] then
         _w = w_s
@@ -546,17 +553,25 @@ command.pack = function (a)
     end
     file:close()
   end)
+  if not ok then
+    _compressed = {}  -- to avoid saving
+    print(err)
+  end
 end
 
+-- extract backup files for archive
 command.unpack = function (a)
+  -- init dictionary
   for i = 0, 255 do _dict[i] = string.char(i) end
   local fname = argparse._get_(a)
   local ok, err = pcall(function () 
+    -- read file
     local file = assert(io.open(fname, 'rb'), 'File not found')
     local n = file:read(3)
     assert(n == 'VCZ', 'Wrong file type')
     local w, decompressed = '', {}
     n = file:read(2)
+    -- unpack
     while n do
       local c = string.unpack('>H', n)
       local entry = _dict[c] or w..ssub(w, 1, 1)
@@ -564,25 +579,20 @@ command.unpack = function (a)
       if #w > 0 then
         _dict[#_dict+1] = w..ssub(entry, 1, 1)
       end
-      w = entry
-      n = file:read(2)
+      w, n = entry, file:read(2)
     end
     file:close()
-    print(#decompressed)
-
-    --
+    -- split and save
     local txt = table.concat(decompressed)
-    print(txt)
     local a, b, prev = 1, 0, 1
     local dir = DIR and DIR..(text.sep) or ''
     while true do
       a, b = string.find(txt, 'BKP END .-\n', prev)
-      print(a, b)
       if not a then break end
-      local out_name = ssub(txt, a+8, b-1)
-      print('out name', out_name)
-      local f = assert(io.open(dir..out_name, 'w'), 'Unable to open file')
-      f:write(ssub(txt, prev, a-1))
+      local out_name = dir .. ssub(txt, a+8, b-1)
+      print('Save '..out_name)
+      local f = assert(io.open(out_name, 'w'), 'Unable to open file')
+      f:write(ssub(txt, prev, a-2))  -- remove newline
       f:close()
       prev = b+1
     end
@@ -590,19 +600,23 @@ command.unpack = function (a)
   if not ok then print(err) end
 end
 
-local function _packSave ()
-  if _i_next >= 65536 then
-    return print('Too big file size')
+-- save archive to file
+local function _packSave (a)
+  if _i_next >= 65536 then  -- use 2 bytes
+    return print('Too big size')
   end
   if #_compressed == 0 then return end
   _compressed[#_compressed+1] = _dict[_w]
-  local fname = text.nowFile() .. '.vcz'
-  local output = io.open(fname, 'wb')
+  -- save
+  local _, nm, br = argparse._get_(a)
+  local fname = sformat('%s%s.vcz', nm or text.nowFile(), br and '.'..br or '')
+  local output = assert(io.open(fname, 'wb'), 'Unable to open file')
   output:write('VCZ')  -- add marker
   for i = 1, #_compressed do
     output:write(string.pack('>H', _compressed[i]))
   end
   output:close()
+  print('Save to ' .. fname)
 end
 
 -- call unexpected argument
@@ -674,8 +688,12 @@ backup = function (a)
   _updateFilemap(FILES, DIR)
   if _individual[ a[1] ] then
     -- not "defined"
-    print(sformat("Choose file for '%s':\n", a[1]))
-    for src in pairs(_filemap) do print(src) end
+    if a[1] == 'pack' then
+      print('Choose vcz file')
+    else
+      print(sformat("Choose file for '%s':\n", a[1]))
+      for src in pairs(_filemap) do print(src) end
+    end
   elseif argparse[ a[1] ] then 
     -- valid group command
     local aa = {0, a[1], a[2], a[3]}
@@ -685,7 +703,7 @@ backup = function (a)
       text.showBold(sformat("\t%s:", src), '\n')
       command[ aa[2] ](aa)
     end
-    if a[1] == 'pack' and #_compressed > 0 then _packSave() end
+    if a[1] == 'pack' and #_compressed > 0 then _packSave(aa) end
   else
     -- process command for single file
     command[ a[2] ](a)
