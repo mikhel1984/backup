@@ -4,7 +4,7 @@
 Save and restore changes in text files.
 See "usage" for details.
 
-2020-2021, Stanislav Mikhel ]]
+2020-2025, Stanislav Mikhel ]]
 
 -- GLOBAL VARIABLES
 EXT = "bkp"      -- output extention
@@ -20,12 +20,12 @@ USAGE: %s [file] cmd [option] [branch]
 
   Commands:
     add  [msg] [br] - save changes in file
-    rev  [n]   [br] - switch to the n-th revision 
+    rev  [n]   [br] - switch to the n-th revision
     revm [msg] [br] - switch to revision with comment message or date
     diff [n]   [br] - comapre file with n-th revision
     log        [br] - show all commits
     summ       [br] - short summary
-    merge       br  - merge the branch 
+    merge       br  - merge the branch
     base  n    [br] - update initial commit
     pop        [br] - remove last commit
     rm         [br] - clear file history
@@ -40,7 +40,7 @@ local sgmatch = string.gmatch
 local ssub    = string.sub
 local sformat = string.format
 
--- ansi color codes 
+-- ansi color codes
 local text = {
   RED = '\x1b[31m',
   GREEN = '\x1b[32m',
@@ -82,7 +82,7 @@ end
 
 -- Find longest common subgroup
 diff.lcs = function (a, b)
-  local an, bn, ab = #a, #b, 1  
+  local an, bn, ab = #a, #b, 1
   -- skip begin
   while ab <= an and ab <= bn and a[ab] == b[ab] do
     ab = ab + 1
@@ -90,46 +90,46 @@ diff.lcs = function (a, b)
   -- skip end
   while ab <= an and ab <= bn and a[an] == b[bn] do
     an, bn = an - 1, bn - 1
-  end  
+  end
   -- make table
   local S, ab1, mmax = {}, ab - 1, math.max
-  S[ab1] = setmetatable({}, {__index=function() return ab1 end}) 
+  S[ab1] = setmetatable({}, {__index=function() return ab1 end})
   for i = ab, an do
     S[i] = {[ab1]=ab1}
     local Si, Si1, ai = S[i], S[i-1], a[i]
     for j = ab, bn do
-      Si[j] = (ai == b[j]) 
-              and (Si1[j-1] + 1) 
-              or mmax(Si[j-1], Si1[j]) 
+      Si[j] = (ai == b[j])
+              and (Si1[j-1] + 1)
+              or mmax(Si[j-1], Si1[j])
     end
   end
-  local Ncom = S[an][bn]   -- total number of common strings  
+  local Ncom = S[an][bn]   -- total number of common strings
   -- prepare table
   local common = {}
-  --for i = 0,N do 
+  --for i = 0,N do
   for i = 0, (Ncom + #a - an) do
     common[i] = (i < ab) and {i, i} or 0
-  end   
+  end
   -- collect
-  local N = Ncom  
+  local N = Ncom
   while N > ab1 do
     local Sab = S[an][bn]
-    if Sab == S[an-1][bn] then 
+    if Sab == S[an-1][bn] then
       an = an - 1
-    elseif Sab == S[an][bn-1] then 
+    elseif Sab == S[an][bn-1] then
       bn = bn - 1
     else
       --assert (a[an] == b[bn])
-      common[N] = {an, bn} 
+      common[N] = {an, bn}
       an, bn, N = an - 1, bn - 1, N - 1
     end
   end
   an, bn = #a + 1, #b + 1
-  for i = #common+1, Ncom+1, -1 do    
+  for i = #common+1, Ncom+1, -1 do
     common[i] = {an, bn}
     an, bn = an - 1, bn - 1
   end
-  return common 
+  return common
 end
 
 -- show difference
@@ -155,7 +155,7 @@ diff.merge = function (f, a, b, msg)
   local conflicts = false
   for n = 1, #common do
     local c1, c2 = table.unpack(common[n])
-    if c2-1 > p2 then 
+    if c2-1 > p2 then
       if c1-1 > p1 then
         -- have to resolve conflict
         conflicts = true
@@ -164,7 +164,7 @@ diff.merge = function (f, a, b, msg)
         f:write(_MID_)
         for i = p2+1, c2-1 do f:write(b[i], '\n') end -- new
         f:write(_NEW_, msg or '', '\n')
-      else 
+      else
         -- simple add new lines
         for i = p2+1, c2-1 do f:write(b[i], '\n') end
       end
@@ -213,6 +213,7 @@ local function _bkpname(fname, br)
   return sformat("%s%s.%s", fname, br and ('.'..br) or '', EXT)
 end
 
+
 -- parse command line arguments
 local argparse = {}
 
@@ -234,9 +235,9 @@ argparse.summ = argparse.log
 
 -- rev n branch | rev n | rev branch | rev
 argparse.rev = function (a)
-  local n = tonumber(a[3]) 
+  local n = tonumber(a[3])
   local br = a[4] or BRANCH
-  if br or n then 
+  if br or n then
     return _bkpname(a[1], br), n, br
   end
   br = a[3] or BRANCH
@@ -260,7 +261,7 @@ end
 
 -- base n branch | base n
 argparse.base = function (a)
-  local br = a[4] or BRANCH 
+  local br = a[4] or BRANCH
   return _bkpname(a[1], br), tonumber(a[3]), br
 end
 
@@ -283,9 +284,11 @@ argparse._get_ = function (a)
   return argparse[ a[2] ](a)
 end
 
+
 local _onlyChanged = true
 -- compression state
 local _dict, _compressed, _i_next, _w = {}, {}, 0, ''
+
 
 -- available commands
 local command = {}
@@ -300,7 +303,7 @@ command._commits_ = function (fname)
       end
     end
     return list
-  end) 
+  end)
   return ok and res or {}
 end
 
@@ -313,7 +316,7 @@ command.log = function (a)
 end
 
 -- prepare file version based on bkp file
-command._make_ = function (fname, last) 
+command._make_ = function (fname, last)
   -- update revision
   if last and last <= 0 then
       -- search in backward direction
@@ -321,21 +324,21 @@ command._make_ = function (fname, last)
       local v = smatch(tmp[#tmp + last] or "", "^BKP NEW (%d+) : .*")
       last = tonumber(v)  -- get last commit if out of range
   end
-  local f = io.open(fname, 'r') 
-  if f == nil then 
-    return {}, 0 
+  local f = io.open(fname, 'r')
+  if f == nil then
+    return {}, 0
   end
   -- continue if the file found
   local begin, rev = {}
   local curr, index, id, del = nil, 0, 0, true
   for line in f:lines() do
-    if #line > 8 and sfind(line, "^BKP ") then 
+    if #line > 8 and sfind(line, "^BKP ") then
       -- execute command
       local cmd, v1, v2 = smatch(line, "^BKP (%u%u%u) (%d+) : (.*)")
       v1 = tonumber(v1)
       if cmd == "NEW" then                            -- commit
-        if v1-1 == last then break 
-        else 
+        if v1-1 == last then break
+        else
           curr, index, id, del = begin, 0, v1, true   -- reset all
         end
         rev = ssub(line, 9)
@@ -345,13 +348,13 @@ command._make_ = function (fname, last)
         end
         curr, index = _goTo(curr, index, v1-1)
       elseif cmd == "REM" then                        -- remove lines
-        curr, index = _goTo(curr, index, v1-1)  
+        curr, index = _goTo(curr, index, v1-1)
         local curr2, index2 = _goTo(curr, index, v1+tonumber(v2))
         curr.child, index = curr2, index2 - 1         -- update indexation
       end
     else
       -- insert line
-      curr = _addString(line, curr)             
+      curr = _addString(line, curr)
       index = index + 1
     end
   end
@@ -362,11 +365,11 @@ end
 -- "commit"
 command.add = function (a)
   local fname, msg, br = argparse._get_(a)
-  local saved, id = command._make_(fname) 
+  local saved, id = command._make_(fname)
   local new = diff.read(a[1])
-  local common = diff.lcs(saved, new) 
-  if _onlyChanged and #saved == #new and #new == #common-1 then 
-    return 
+  local common = diff.lcs(saved, new)
+  if _onlyChanged and #saved == #new and #new == #common-1 then
+    return
   end
   -- save commit
   local f = io.open(fname, "a")
@@ -396,9 +399,9 @@ end
 -- restore the desired file version
 command.rev = function (a)
   local fname, ver, br = argparse._get_(a)
-  local saved, id, msg = command._make_(fname, ver) 
-  if id == 0 then 
-    return print("No commits") 
+  local saved, id, msg = command._make_(fname, ver)
+  if id == 0 then
+    return print("No commits")
   end
   -- save result
   io.open(a[1], "w"):write(table.concat(saved, '\n'))
@@ -428,9 +431,9 @@ end
 -- difference between the file and some revision
 command.diff = function (a)
   local fname, ver = argparse._get_(a)
-  local saved, id, msg = command._make_(fname, ver) 
-  if id == 0 then 
-    return print("No commits", ver) 
+  local saved, id, msg = command._make_(fname, ver)
+  if id == 0 then
+    return print("No commits", ver)
   end
   -- compare
   io.write("Revision ", msg, "\n")
@@ -440,11 +443,11 @@ end
 -- "merge" the branch
 command.merge = function (a)
   local main, brname, branch = argparse._get_(a)
-  if not branch then 
-    return command.wtf('?!') 
+  if not branch then
+    return command.wtf('?!')
   end
   pcall(function ()
-    local tm = diff.read(main) 
+    local tm = diff.read(main)
     local tb = command._make_(brname)
     local f = io.open(main, 'w')
     diff.merge(f, tm, tb, branch)
@@ -454,32 +457,32 @@ end
 
 -- update initial version
 command.base = function (a)
-  local fname, ver = argparse._get_(a) 
-  local tbl = diff.read(fname) 
+  local fname, ver = argparse._get_(a)
+  local tbl = diff.read(fname)
   local ind, comment = 0, '^BKP NEW '..(a[3] or 'None')
-  for i = 1, #tbl do 
-    if sfind(tbl[i], comment) then 
+  for i = 1, #tbl do
+    if sfind(tbl[i], comment) then
       io.write('Delete before "', ssub(tbl[i], 9), '"\nContinue (y/n)? ')
       if 'y' == io.read() then ind = i end
       break
     end
   end
-  if ind == 0 then 
-    return 
+  if ind == 0 then
+    return
   end
   -- save previous changes
   local f = io.open(fname:gsub(EXT..'$', sformat("v%s.%s", a[3], EXT)), "w")
   for i = 1, ind-1 do f:write(tbl[i], '\n') end
-  f:close() 
+  f:close()
   -- save current version
   local saved, id = command._make_(fname, ver)
-  f = io.open(fname, 'w') 
+  f = io.open(fname, 'w')
   f:write(sformat("BKP NEW %d : Update base\nBKP ADD 1 : %d\n", ver, #saved))
   for i = 1, #saved do f:write(saved[i], '\n') end
   -- start from the next commit
   ind = ind + 1
-  while ind <= #tbl and not sfind(tbl[ind], "^BKP NEW ") do ind = ind + 1 end 
-  for j = ind, #tbl do f:write(tbl[j], '\n') end 
+  while ind <= #tbl and not sfind(tbl[ind], "^BKP NEW ") do ind = ind + 1 end
+  for j = ind, #tbl do f:write(tbl[j], '\n') end
   f:close()
 end
 
@@ -488,7 +491,7 @@ command.pop = function (a)
   local fname = argparse._get_(a)
   local tbl = diff.read(fname)
   local line = nil
-  repeat 
+  repeat
     line = table.remove(tbl)
   until sfind(line, "^BKP NEW ")
   if #tbl == 0 then
@@ -512,10 +515,10 @@ end
 -- short summary
 command.summ = function (a)
   local fname = argparse._get_(a)
-  local v = pcall(function() 
+  local v = pcall(function()
     local len, last, total = 0, "", 0
     for line in io.lines(fname) do
-      len = len + #line 
+      len = len + #line
       if sfind(line, "^BKP NEW ") then
         total = total + 1
         last = ssub(line, 9)
@@ -523,7 +526,7 @@ command.summ = function (a)
     end
     print(sformat("size: %.1f kB | commits: %d | last: %s", (len / 1024), total, last))
   end)
-  if not v then print("commits: 0") end 
+  if not v then print("commits: 0") end
 end
 
 -- combine and compress backup files
@@ -534,7 +537,7 @@ command.pack = function (a)
     _i_next = 256
   end
   local fname = argparse._get_(a)
-  print('Read '..fname)
+  print('Read', fname)
   local ok, err = pcall(function ()
     local file = io.open(fname, 'r')
     fname = DIR and ssub(fname, #DIR+2) or fname  -- remove directory name
@@ -564,7 +567,7 @@ command.unpack = function (a)
   -- init dictionary
   for i = 0, 255 do _dict[i] = string.char(i) end
   local fname = argparse._get_(a)
-  local ok, err = pcall(function () 
+  local ok, err = pcall(function ()
     -- read file
     local file = assert(io.open(fname, 'rb'), 'File not found')
     local n = file:read(3)
@@ -590,7 +593,7 @@ command.unpack = function (a)
       a, b = string.find(txt, 'BKP END .-\n', prev)
       if not a then break end
       local out_name = dir .. ssub(txt, a+8, b-1)
-      print('Save '..out_name)
+      print('Save', out_name)
       local f = assert(io.open(out_name, 'w'), 'Unable to open file')
       f:write(ssub(txt, prev, a-2))  -- remove newline
       f:close()
@@ -620,9 +623,9 @@ local function _packSave (a)
 end
 
 -- call unexpected argument
-setmetatable(command, 
-{__index=function() 
-  print(sformat(usage, arg[0])) 
+setmetatable(command,
+{__index=function()
+  print(sformat(usage, arg[0]))
   return function() end
 end})
 
@@ -674,12 +677,12 @@ FILES = {
 -- current directory, simple list
 -- "1.txt",
 -- other directories, require aliases
--- ["bar/2.txt"] = "bar2.txt", 
+-- ["bar/2.txt"] = "bar2.txt",
 }
 
 backup()
 ]])
-  f:close()  
+  f:close()
 end
 
 -- execute command
@@ -688,13 +691,13 @@ backup = function (a)
   _updateFilemap(FILES, DIR)
   if _individual[ a[1] ] then
     -- not "defined"
-    if a[1] == 'pack' then
+    if a[1] == 'unpack' then
       print('Choose vcz file')
     else
       print(sformat("Choose file for '%s':\n", a[1]))
       for src in pairs(_filemap) do print(src) end
     end
-  elseif argparse[ a[1] ] then 
+  elseif argparse[ a[1] ] then
     -- valid group command
     local aa = {0, a[1], a[2], a[3]}
     _onlyChanged = false    -- add all files
@@ -712,7 +715,7 @@ end
 
 -- for further use
 return {
-  diff=diff, 
+  diff=diff,
   command=command,
   template=template,
 }
