@@ -60,6 +60,13 @@ text.showBold  = function(...) return text._show_(text.BOLD, ...) end
 -- time stamp
 text.now = function () return os.date('[%Y/%m/%d %H:%M] ') end
 
+-- file name time stamp
+text.nowFile = function () return os.date('%Y-%m-%d_%H-%M') end
+
+-- file separator
+text.sep = ssub(package.config, 1, 1)
+
+
 -- file comparison
 local diff = {}
 
@@ -172,19 +179,19 @@ diff.merge = function (f, a, b, msg)
 end
 
 -- make single-linked list
-local function addString (s, parent)
+local function _addString (s, parent)
   parent.child = {s, child=parent.child}
   return parent.child
 end
 
 -- move forward along the list
-local function goTo (node, iCur, iGoal)
+local function _goTo (node, iCur, iGoal)
   for i = iCur+1, iGoal do node = node.child end
   return node, iGoal
 end
 
 -- list to table
-local function toTbl (ptr)
+local function _toTbl (ptr)
   local t = {}
   while ptr do
     t[#t+1] = ptr[1]
@@ -194,11 +201,11 @@ local function toTbl (ptr)
 end
 
 -- file mapping
-local filemap = {}
+local _filemap = {}
 
 -- prepare backup file name
-local function bkpname(fname, br)
-  local map = filemap[fname]
+local function _bkpname(fname, br)
+  local map = _filemap[fname]
   fname = map or fname
   return sformat("%s%s.%s", fname, br and ('.'..br) or '', EXT)
 end
@@ -210,13 +217,13 @@ local argparse = {}
 argparse.add = function (a)
   local br = a[4] or BRANCH
   local msg = text.now() .. (a[3] or '')
-  return bkpname(a[1], br), msg, br
+  return _bkpname(a[1], br), msg, br
 end
 
 -- log branch | log
 argparse.log = function (a)
   local br = a[3] or BRANCH
-  return bkpname(a[1], br), nil, br
+  return _bkpname(a[1], br), nil, br
 end
 
 -- summ branch | summ
@@ -227,16 +234,16 @@ argparse.rev = function (a)
   local n = tonumber(a[3]) 
   local br = a[4] or BRANCH
   if br or n then 
-    return bkpname(a[1], br), n, br
+    return _bkpname(a[1], br), n, br
   end
   br = a[3] or BRANCH
-  return bkpname(a[1], br), nil, br
+  return _bkpname(a[1], br), nil, br
 end
 
 -- revm msg branch | revm msg | revm
 argparse.revm = function (a)
   local br = a[4] or BRANCH
-  return bkpname(a[1], br), a[3], br
+  return _bkpname(a[1], br), a[3], br
 end
 
 -- diff n branch | diff n | diff branch | diff
@@ -245,13 +252,13 @@ argparse.diff = argparse.rev
 -- merge branch
 argparse.merge = function (a)
   local br = a[3] or BRANCH
-  return a[1], bkpname(a[1], br), br
+  return a[1], _bkpname(a[1], br), br
 end
 
 -- base n branch | base n
 argparse.base = function (a)
   local br = a[4] or BRANCH 
-  return bkpname(a[1], br), tonumber(a[3]), br
+  return _bkpname(a[1], br), tonumber(a[3]), br
 end
 
 -- pop branch | pop
@@ -260,12 +267,22 @@ argparse.pop = argparse.log
 -- rm branch | rm
 argparse.rm = argparse.log
 
+-- pack branch | back
+argparse.pack = argparse.log
+
+-- unpack
+argparse.unpack = function (a)
+  return a[1]
+end
+
 -- return backup name, parameter, branch
 argparse._get_ = function (a)
   return argparse[ a[2] ](a)
 end
 
-local onlyChanged = true
+local _onlyChanged = true
+-- compression state
+local _dict, _compressed, _i_next, _w = {}, {}, 0, ''
 
 -- available commands
 local command = {}
@@ -323,20 +340,20 @@ command._make_ = function (fname, last)
         if del then
           curr, index, del = begin, 0, false          -- reset, change flag
         end
-        curr, index = goTo(curr, index, v1-1)
+        curr, index = _goTo(curr, index, v1-1)
       elseif cmd == "REM" then                        -- remove lines
-        curr, index = goTo(curr, index, v1-1)  
-        local curr2, index2 = goTo(curr, index, v1+tonumber(v2))
+        curr, index = _goTo(curr, index, v1-1)  
+        local curr2, index2 = _goTo(curr, index, v1+tonumber(v2))
         curr.child, index = curr2, index2 - 1         -- update indexation
       end
     else
       -- insert line
-      curr = addString(line, curr)             
+      curr = _addString(line, curr)             
       index = index + 1
     end
   end
   f:close()
-  return toTbl(begin.child), id, rev
+  return _toTbl(begin.child), id, rev
 end
 
 -- "commit"
@@ -345,7 +362,7 @@ command.add = function (a)
   local saved, id = command._make_(fname) 
   local new = diff.read(a[1])
   local common = diff.lcs(saved, new) 
-  if onlyChanged and #saved == #new and #new == #common-1 then 
+  if _onlyChanged and #saved == #new and #new == #common-1 then 
     return 
   end
   -- save commit
@@ -506,6 +523,88 @@ command.summ = function (a)
   if not v then print("commits: 0") end 
 end
 
+command.pack = function (a)
+  if _i_next == 0 then
+    for i = 0, 255 do _dict[string.char(i)] = i end
+    _i_next = 256
+  end
+  local fname = argparse._get_(a)
+  pcall(function ()
+    local file = io.open(fname, 'r')
+    fname = DIR and ssub(fname, #DIR+2) or fname
+    local txt = sformat('%s\nBKP END %s\n', file:read('a'), fname)  -- file separator
+    print(txt)
+    for s in string.gmatch(txt, '.') do
+      local w_s = _w..s
+      if _dict[w_s] then
+        _w = w_s
+      else
+        _compressed[#_compressed+1] = _dict[_w]
+        _dict[w_s] = _i_next
+        _i_next, _w = _i_next+1, s
+      end
+    end
+    file:close()
+  end)
+end
+
+command.unpack = function (a)
+  for i = 0, 255 do _dict[i] = string.char(i) end
+  local fname = argparse._get_(a)
+  local ok, err = pcall(function () 
+    local file = assert(io.open(fname, 'rb'), 'File not found')
+    local n = file:read(3)
+    assert(n == 'VCZ', 'Wrong file type')
+    local w, decompressed = '', {}
+    n = file:read(2)
+    while n do
+      local c = string.unpack('>H', n)
+      local entry = _dict[c] or w..ssub(w, 1, 1)
+      decompressed[#decompressed+1] = entry
+      if #w > 0 then
+        _dict[#_dict+1] = w..ssub(entry, 1, 1)
+      end
+      w = entry
+      n = file:read(2)
+    end
+    file:close()
+    print(#decompressed)
+
+    --
+    local txt = table.concat(decompressed)
+    print(txt)
+    local a, b, prev = 1, 0, 1
+    local dir = DIR and DIR..(text.sep) or ''
+    while true do
+      a, b = string.find(txt, 'BKP END .-\n', prev)
+      print(a, b)
+      if not a then break end
+      local out_name = ssub(txt, a+8, b-1)
+      print('out name', out_name)
+      local f = assert(io.open(dir..out_name, 'w'), 'Unable to open file')
+      f:write(ssub(txt, prev, a-1))
+      f:close()
+      prev = b+1
+    end
+  end)
+  if not ok then print(err) end
+end
+
+local function _packSave ()
+  if _i_next >= 65536 then
+    return print('Too big file size')
+  end
+  if #_compressed == 0 then return end
+  _compressed[#_compressed+1] = _dict[_w]
+  local fname = text.nowFile() .. '.vcz'
+  local output = io.open(fname, 'wb')
+  output:write('VCZ')  -- add marker
+  for i = 1, #_compressed do
+    output:write(string.pack('>H', _compressed[i]))
+  end
+  output:close()
+end
+
 -- call unexpected argument
 setmetatable(command, 
 {__index=function() 
@@ -514,27 +613,27 @@ setmetatable(command,
 end})
 
 -- don't call for file group
-local individual = {
+local _individual = {
   -- comment to make available
   log=true,  -- can be too long
   base=true, -- require confirm for each file
+  unpack=true, -- expected single archive file
 }
 
 -- mapping 'file > path'
-local function updateFilemap(files,dir)
+local function _updateFilemap(files, dir)
   if files then
-    local sep = ssub(package.config, 1, 1)  -- system-dependent separator
-    dir = DIR and DIR..sep or ""
+    dir = DIR and DIR..(text.sep) or ""
     local name = {}
     -- single files
     for _, v in ipairs(files) do
       name[v] = true
-      filemap[v] = dir..v
+      _filemap[v] = dir..v
     end
     -- explicit definitions
     for k, v in pairs(files) do
       if not name[v] then
-        filemap[k] = dir..v
+        _filemap[k] = dir..v
       end
     end
   end
@@ -572,20 +671,21 @@ end
 -- execute command
 backup = function (a)
   a = a or arg
-  updateFilemap(FILES, DIR)
-  if individual[ a[1] ] then
+  _updateFilemap(FILES, DIR)
+  if _individual[ a[1] ] then
     -- not "defined"
     print(sformat("Choose file for '%s':\n", a[1]))
-    for src in pairs(filemap) do print(src) end
+    for src in pairs(_filemap) do print(src) end
   elseif argparse[ a[1] ] then 
     -- valid group command
     local aa = {0, a[1], a[2], a[3]}
-    onlyChanged = false    -- add all files
-    for src in pairs(filemap) do
+    _onlyChanged = false    -- add all files
+    for src in pairs(_filemap) do
       aa[1] = src
       text.showBold(sformat("\t%s:", src), '\n')
       command[ aa[2] ](aa)
     end
+    if a[1] == 'pack' and #_compressed > 0 then _packSave() end
   else
     -- process command for single file
     command[ a[2] ](a)
