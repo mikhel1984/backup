@@ -16,8 +16,8 @@ DIR = "foo"
 FILES = {
 -- current directory
 "1.txt",
--- other directories
-["bar/2.txt"] = "bar2.txt",
+-- other directory
+"bar/2.txt",
 }
 
 backup()

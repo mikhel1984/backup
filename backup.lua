@@ -206,11 +206,20 @@ end
 -- file mapping
 local _filemap = {}
 
+-- path/to/file -> path-S-to-S-file
+local function _longToSingle (fname)
+  local templ = (text.sep == '/') and '/' or '\\'
+  return string.gsub(fname, templ, '-S-')
+end
+
 -- prepare backup file name
 local function _bkpname(fname, br)
   local map = _filemap[fname]
-  fname = map or fname
-  return sformat("%s%s.%s", fname, br and ('.'..br) or '', EXT)
+  if not map then
+    local dir = DIR and DIR..(text.sep) or ""
+    map = dir .. _longToSingle(fname)
+  end
+  return sformat("%s%s.%s", map, br and ('.'..br) or '', EXT)
 end
 
 
@@ -641,17 +650,8 @@ local _individual = {
 local function _updateFilemap(files, dir)
   if files then
     dir = DIR and DIR..(text.sep) or ""
-    local name = {}
-    -- single files
     for _, v in ipairs(files) do
-      name[v] = true
-      _filemap[v] = dir..v
-    end
-    -- explicit definitions
-    for k, v in pairs(files) do
-      if not name[v] then
-        _filemap[k] = dir..v
-      end
+      _filemap[v] = dir .. _longToSingle(v)
     end
   end
 end
@@ -674,10 +674,8 @@ require "backup"
 -- DIR = "foo"
 --   file list
 FILES = {
--- current directory, simple list
 -- "1.txt",
--- other directories, require aliases
--- ["bar/2.txt"] = "bar2.txt",
+-- "2.lua",
 }
 
 backup()

@@ -15,8 +15,7 @@ require "backup"
 FILES = {
 -- current directory, simple list
 -- "1.txt",
--- other directories, require aliases
--- ["bar/2.txt"] = "bar2.txt", 
+-- "2.lua",
 }
 
 backup()
