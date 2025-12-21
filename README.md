@@ -19,7 +19,7 @@ Make it executable for convenience. If the file name, for example, is _vc.lua_, 
 Commands and options: 
 - **add** _(msg)_ _(branch)_ - save last changes in file
 - **rev** _(n)_ _(branch)_ - switch to the n-th revision of the file
-- **revm** _(msg)_ _(branch)_ - switch to revision with the given comment message
+- **revm** _(msg)_ _(branch)_ - switch to revision with the given comment message, date or template
 - **diff** _(n)_ _(branch)_ - compare current state with the n-th revision
 - **log** _(branch)_ - show all commits
 - **summ** _(branch)_ - short summary
@@ -27,6 +27,8 @@ Commands and options:
 - **base** _(n)_ _(branch)_ - update initial commit
 - **pop** _(branch)_ - remove last commit
 - **rm** _(branch)_ - clear file history
+- **pack** _(name)_ _(branch)_ - save backup files into archive with the given name
+- **unpack** - extract files from archive
 
 Default value for _n_ is the last revision, negative values can be used for backward search, default _branch_ or _msg_ name is empty string.
 
@@ -42,40 +44,25 @@ The following global varialbes can be defined in the **Lua** file for the progra
 
 ## Example 
 
-Assume that we want to work with group of files and store _bkp_ in the _foo_ directory. The following three versions of configuratino file are equal. 
+Assume that we want to work with group of files and store _bkp_ in the _foo_ directory. The following configuration can be used. 
 ```lua
 #!/usr/local/lib/lua
 require 'backup'
 
---    1st version
-FILES = {
-["file1"] = "foo/file1",
-["file2"] = "foo/file2",
-["path/to/file3"] = "foo/file3",
-}
-
---    2nd version
 DIR = "foo"
 FILES = {
-["file1"] = "file1",
-["file2"] = "file2",
-["path/to/file3"] = "file3",
+  "file1",
+  "file2",
+  "path/to/file3",
 }
-
---    3rd version
-DIR = "foo"
-FILES = {
-"file1",
-"file2",
-}
-FILES["path/to/file3"] = "file3"
 
 backup()
 ```
 
 ## Dependencies 
 
-The library works in **Lua** 5.1-5.4 without additional packages. 
+Most functions of the library work in **Lua** 5.1-5.4 without additional packages. **pack** and **unpack** require **Lua** 
+5.3 or higher.
 
 ## Linux settings
 
