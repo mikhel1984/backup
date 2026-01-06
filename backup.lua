@@ -582,16 +582,25 @@ command.unpack = function (a)
     local n = file:read(3)
     assert(n == 'VCZ', 'Wrong file type')
     local w, decompressed = '', {}
-    n = file:read(2)
+    local bs, up = 1, 256-1
+    local fmt = ">I"..tostring(bs)
+    n = file:read(bs)
     -- unpack
     while n do
-      local c = string.unpack('>H', n)
+      local c = string.unpack(fmt, n)
+      if c == up then
+        -- update size
+        bs, up = bs+1, (up+1)*256-1
+        fmt = ">I"..tostring(bs)
+        n = file:read(bs)
+        c = string.unpack(fmt, n)
+      end
       local entry = _dict[c] or w..ssub(w, 1, 1)
       decompressed[#decompressed+1] = entry
       if #w > 0 then
         _dict[#_dict+1] = w..ssub(entry, 1, 1)
       end
-      w, n = entry, file:read(2)
+      w, n = entry, file:read(bs)
     end
     file:close()
     -- split and save
@@ -614,9 +623,6 @@ end
 
 -- save archive to file
 local function _packSave (a)
-  if _i_next >= 65536 then  -- use 2 bytes
-    return print('Too big size')
-  end
   if #_compressed == 0 then return end
   _compressed[#_compressed+1] = _dict[_w]
   -- save
@@ -624,8 +630,15 @@ local function _packSave (a)
   local fname = sformat('%s%s.vcz', nm or text.nowFile(), br and '.'..br or '')
   local output = assert(io.open(fname, 'wb'), 'Unable to open file')
   output:write('VCZ')  -- add marker
-  for i = 1, #_compressed do
-    output:write(string.pack('>H', _compressed[i]))
+  local bs, up = 1, 256-1
+  local fmt = ">I"..tostring(bs)
+  for _, v in ipairs(_compressed) do
+    if v >= up then
+      output:write(string.pack(fmt, up))  -- set marker
+      bs, up = bs+1, (up+1)*256-1
+      fmt = ">I"..tostring(bs)
+    end
+    output:write(string.pack(fmt, v))
   end
   output:close()
   print('Save to ' .. fname)
