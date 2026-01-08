@@ -61,7 +61,7 @@ text.showGreen = function(...) return text._show_(text.GREEN, ...) end
 text.showBold  = function(...) return text._show_(text.BOLD, ...) end
 
 -- time stamp
-text.now = function () return os.date('[%Y/%m/%d %H:%M] ') end
+text.now = function () return os.date('[%Y/%m/%d %H:%M:%S] ') end
 
 -- file name time stamp
 text.nowFile = function () return os.date('%Y-%m-%d_%H-%M') end
