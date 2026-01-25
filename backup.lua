@@ -669,8 +669,10 @@ local function _updateFilemap(files, dir)
   end
 end
 
+-- generate script template
 local function template (fname)
-  local f = io.open((fname or 'vc')..'.lua', 'w')
+  fname = (fname or 'vc')..'.lua'
+  local f = io.open(fname, 'w')
   f:write(
 [[#!/usr/local/bin/lua
 require "backup"
@@ -694,6 +696,7 @@ FILES = {
 backup()
 ]])
   f:close()
+  print("Generate file", fname)
 end
 
 -- execute command
@@ -728,5 +731,5 @@ end
 return {
   diff=diff,
   command=command,
-  template=template,
+  init=template,
 }
